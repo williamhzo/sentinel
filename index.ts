@@ -33,7 +33,7 @@ const FILES = {
   aiSdk: path.join(__dirname, 'cache', 'last_ai_sdk_tag.json'),
   wagmi: path.join(__dirname, 'cache', 'last_wagmi_tag.json'),
   viem: path.join(__dirname, 'cache', 'last_viem_tag.json'),
-  elements: path.join(__dirname, 'cache', 'last_elements_tag.json'),
+  elements: path.join(__dirname, 'cache', 'last_elements_hash.json'),
 };
 
 async function sendTelegramMessage(message: string): Promise<void> {
@@ -149,7 +149,6 @@ async function checkCursor(): Promise<string | null> {
   return null;
 }
 
-// Check v0 (scrape Vercel changelog for v0 mentions)
 async function checkV0(): Promise<string | null> {
   const url = 'https://vercel.com/changelog';
   try {
@@ -202,7 +201,62 @@ async function checkV0(): Promise<string | null> {
   return null;
 }
 
-// Generic GitHub checker function
+async function checkAIElements(): Promise<string | null> {
+  const url = 'https://vercel.com/changelog';
+  try {
+    const { data } = await axios.get(url);
+    const $ = cheerio.load(data);
+    const entries = $('article');
+    let latestElementsEntry: UpdateSummary | null = null;
+    for (let i = 0; i < Math.min(10, entries.length); i++) {
+      const entry = $(entries[i]);
+      const titleElem = entry.find('h2:first');
+      let title = titleElem.text().trim().toLowerCase();
+      if (
+        title.includes('ai elements') ||
+        title.includes('elements') ||
+        title.includes('ai-elements')
+      ) {
+        const dateText = entry.find('p').text();
+        const dateMatch = dateText.match(
+          /(\w+ \d{1,2}(?:st|nd|rd|th)?, \d{4})/
+        );
+        const date = dateMatch
+          ? dateMatch[0]
+          : new Date().toISOString().slice(0, 10);
+        const body = entry
+          .find('p, ul > li')
+          .map((_, el) => $(el).text().trim())
+          .get()
+          .join(' ')
+          .slice(0, 300);
+        latestElementsEntry = {
+          title: titleElem.text().trim(),
+          date,
+          changelog: body,
+        };
+        break;
+      }
+    }
+    if (!latestElementsEntry) return null;
+
+    const contentHash = crypto
+      .createHash('sha256')
+      .update(JSON.stringify(latestElementsEntry))
+      .digest('hex');
+    const lastHash = await getLastValue(FILES.elements);
+
+    if (contentHash !== lastHash) {
+      const summary = `New AI Elements Update: ${latestElementsEntry.title} (Date: ${latestElementsEntry.date})\nConcise Changelog: ${latestElementsEntry.changelog}...`;
+      await saveValue(FILES.elements, contentHash);
+      return summary;
+    }
+  } catch (error) {
+    console.error('AI Elements check error:', (error as Error).message);
+  }
+  return null;
+}
+
 async function checkGitHubRepo(
   repo: string,
   fileKey: keyof typeof FILES,
@@ -229,31 +283,30 @@ async function checkGitHubRepo(
   return null;
 }
 
-// Main execution
 (async () => {
   const [
     claudeUpdate,
     cursorUpdate,
     v0Update,
+    elementsUpdate,
     aiSdkUpdate,
     wagmiUpdate,
     viemUpdate,
-    elementsUpdate,
   ] = await Promise.all([
     checkClaudeCode(),
     checkCursor(),
     checkV0(),
+    checkAIElements(),
     checkGitHubRepo('vercel/ai', 'aiSdk', 'Vercel AI SDK'),
     checkGitHubRepo('wevm/wagmi', 'wagmi', 'wagmi'),
     checkGitHubRepo('wevm/viem', 'viem', 'viem'),
-    checkGitHubRepo('vercel/ai-elements', 'elements', 'Vercel AI Elements'),
   ]);
 
   if (claudeUpdate) await sendTelegramMessage(claudeUpdate);
   if (cursorUpdate) await sendTelegramMessage(cursorUpdate);
   if (v0Update) await sendTelegramMessage(v0Update);
+  if (elementsUpdate) await sendTelegramMessage(elementsUpdate);
   if (aiSdkUpdate) await sendTelegramMessage(aiSdkUpdate);
   if (wagmiUpdate) await sendTelegramMessage(wagmiUpdate);
   if (viemUpdate) await sendTelegramMessage(viemUpdate);
-  if (elementsUpdate) await sendTelegramMessage(elementsUpdate);
 })().catch(console.error);
