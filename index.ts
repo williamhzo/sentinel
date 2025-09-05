@@ -43,20 +43,16 @@ function generateMessage(
   link: string
 ): string {
   const currentDateTime = new Date().toLocaleString('en-US', {
-    timeZone: 'UTC',
+    timeZone: 'America/New_York',
     year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZoneName: 'short',
+    month: 'short',
   });
 
-  return `new ${toolName} release
+  return `${toolName} release
 
-📅 ${currentDateTime}
+📅 ${currentDateTime.toLowerCase()}
 
-${title} - ${changelog}
+${title}
 
 🔗 ${link}`;
 }
@@ -97,11 +93,6 @@ async function saveValue(filePath: string, value: string): Promise<void> {
   await fs.writeFile(filePath, JSON.stringify(data), 'utf8');
 }
 
-type PyPIResponse = {
-  info: { version: string; release_notes?: string };
-  releases: Record<string, Array<{ upload_time: string }>>;
-};
-
 type GitHubRelease = {
   tag_name: string;
   published_at: string;
@@ -109,28 +100,50 @@ type GitHubRelease = {
 };
 
 async function checkClaudeCode(): Promise<string | null> {
-  const url = 'https://pypi.org/pypi/claude-code-sdk/json';
+  const url =
+    'https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md';
   try {
-    const { data }: { data: PyPIResponse } = await axios.get(url);
-    const latestVersion = data.info.version;
-    const lastVersion = await getLastValue(FILES.claude);
+    const { data } = await axios.get(url);
 
-    if (latestVersion !== lastVersion) {
-      const releases = data.releases[latestVersion];
-      let releaseDate = new Date().toISOString().slice(0, 10);
-      let changelog =
-        'Check https://docs.anthropic.com/en/docs/claude-code for full details.';
-      if (releases && releases.length > 0 && releases[0]) {
-        releaseDate = releases[0].upload_time.slice(0, 10);
-        if (data.info.release_notes) changelog = data.info.release_notes;
+    // Extract the first changelog entry (latest release)
+    const lines = data.split('\n');
+    let version = '';
+    let changelog = '';
+    let foundFirstEntry = false;
+
+    for (const line of lines) {
+      // Look for version headers like "## 1.0.0" or "# 1.0.0"
+      if (line.match(/^##?\s+\d+\.\d+\.\d+/)) {
+        if (foundFirstEntry) break; // We've captured the first entry
+        version = line.replace(/^##?\s+/, '').trim();
+        foundFirstEntry = true;
+        continue;
       }
+
+      // Capture content until next version header
+      if (foundFirstEntry && !line.match(/^##?\s+\d+\.\d+\.\d+/)) {
+        if (line.trim()) {
+          changelog += line.trim() + ' ';
+        }
+      }
+    }
+
+    if (!version) return null;
+
+    const contentHash = crypto
+      .createHash('sha256')
+      .update(version + changelog)
+      .digest('hex');
+    const lastHash = await getLastValue(FILES.claude);
+
+    if (contentHash !== lastHash) {
       const summary = generateMessage(
-        'Claude Code',
-        `v${latestVersion}`,
-        `${changelog.slice(0, 200)}...`,
-        'https://docs.anthropic.com/en/docs/claude-code'
+        'claude code',
+        `v${version}`,
+        changelog.slice(0, 200),
+        'https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md'
       );
-      await saveValue(FILES.claude, latestVersion);
+      await saveValue(FILES.claude, contentHash);
       return summary;
     }
   } catch (error) {
@@ -166,8 +179,8 @@ async function checkCursor(): Promise<string | null> {
 
     if (contentHash !== lastHash) {
       const summary = generateMessage(
-        'Cursor',
-        latestTitle,
+        'cursor',
+        latestTitle.toLowerCase(),
         `${bodyText}...`,
         'https://cursor.com/changelog'
       );
@@ -190,7 +203,7 @@ async function checkV0(): Promise<string | null> {
     for (let i = 0; i < Math.min(5, entries.length); i++) {
       const entry = $(entries[i]);
       const titleElem = entry.find('h2:first');
-      let title = titleElem.text().trim().toLowerCase();
+      let title = titleElem.text().trim();
       if (title.includes('v0')) {
         const dateText = entry.find('p').text();
         const dateMatch = dateText.match(
@@ -224,7 +237,7 @@ async function checkV0(): Promise<string | null> {
     if (contentHash !== lastHash) {
       const summary = generateMessage(
         'v0',
-        latestV0Entry.title,
+        latestV0Entry.title.toLowerCase(),
         `${latestV0Entry.changelog}...`,
         'https://vercel.com/changelog'
       );
@@ -247,7 +260,7 @@ async function checkAIElements(): Promise<string | null> {
     for (let i = 0; i < Math.min(10, entries.length); i++) {
       const entry = $(entries[i]);
       const titleElem = entry.find('h2:first');
-      let title = titleElem.text().trim().toLowerCase();
+      let title = titleElem.text().trim();
       if (
         title.includes('ai elements') ||
         title.includes('elements') ||
@@ -284,8 +297,8 @@ async function checkAIElements(): Promise<string | null> {
 
     if (contentHash !== lastHash) {
       const summary = generateMessage(
-        'AI Elements',
-        latestElementsEntry.title,
+        'ai elements',
+        latestElementsEntry.title.toLowerCase(),
         `${latestElementsEntry.changelog}...`,
         'https://vercel.com/changelog'
       );
@@ -342,7 +355,7 @@ async function checkGitHubRepo(
     checkCursor(),
     checkV0(),
     checkAIElements(),
-    checkGitHubRepo('vercel/ai', 'aiSdk', 'Vercel AI SDK'),
+    checkGitHubRepo('vercel/ai', 'aiSdk', 'ai sdk'),
     checkGitHubRepo('wevm/wagmi', 'wagmi', 'wagmi'),
     checkGitHubRepo('wevm/viem', 'viem', 'viem'),
   ]);
