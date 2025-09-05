@@ -20,13 +20,13 @@ const TELEGRAM_TOKEN = 'YOUR_TELEGRAM_API_TOKEN_HERE';
 const CHAT_ID = 'YOUR_CHAT_ID_HERE';
 
 const FILES = {
-  claude: path.join(__dirname, 'last_claude_version.json'),
-  cursor: path.join(__dirname, 'last_cursor_hash.json'),
-  v0: path.join(__dirname, 'last_v0_hash.json'),
-  aiSdk: path.join(__dirname, 'last_ai_sdk_tag.json'),
-  wagmi: path.join(__dirname, 'last_wagmi_tag.json'),
-  viem: path.join(__dirname, 'last_viem_tag.json'),
-  elements: path.join(__dirname, 'last_elements_tag.json'),
+  claude: path.join(__dirname, 'cache', 'last_claude_version.json'),
+  cursor: path.join(__dirname, 'cache', 'last_cursor_hash.json'),
+  v0: path.join(__dirname, 'cache', 'last_v0_hash.json'),
+  aiSdk: path.join(__dirname, 'cache', 'last_ai_sdk_tag.json'),
+  wagmi: path.join(__dirname, 'cache', 'last_wagmi_tag.json'),
+  viem: path.join(__dirname, 'cache', 'last_viem_tag.json'),
+  elements: path.join(__dirname, 'cache', 'last_elements_tag.json'),
 };
 
 async function sendTelegramMessage(message: string): Promise<void> {
