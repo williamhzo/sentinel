@@ -16,8 +16,15 @@ type UpdateSummary = {
   changelog: string;
 };
 
-const TELEGRAM_TOKEN = 'YOUR_TELEGRAM_API_TOKEN_HERE';
-const CHAT_ID = 'YOUR_CHAT_ID_HERE';
+const TELEGRAM_TOKEN = Bun.env.TELEGRAM_TOKEN || '';
+const TELEGRAM_CHAT_ID = Bun.env.CHAT_ID || '';
+
+if (!TELEGRAM_TOKEN || !TELEGRAM_CHAT_ID) {
+  console.error(
+    'Missing required environment variables: TELEGRAM_TOKEN and CHAT_ID'
+  );
+  process.exit(1);
+}
 
 const FILES = {
   claude: path.join(__dirname, 'cache', 'last_claude_version.json'),
@@ -32,7 +39,7 @@ const FILES = {
 async function sendTelegramMessage(message: string): Promise<void> {
   const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
   const payload: TelegramPayload = {
-    chat_id: CHAT_ID,
+    chat_id: TELEGRAM_CHAT_ID,
     text: message,
     parse_mode: 'Markdown',
   };
