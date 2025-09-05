@@ -36,6 +36,26 @@ const FILES = {
   elements: path.join(__dirname, 'cache', 'last_elements_hash.json'),
 };
 
+function generateMessage(toolName: string, title: string, changelog: string, link: string): string {
+  const currentDateTime = new Date().toLocaleString('en-US', {
+    timeZone: 'UTC',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZoneName: 'short',
+  });
+  
+  return `new ${toolName} release
+
+📅 ${currentDateTime}
+
+${title} - ${changelog}
+
+🔗 ${link}`;
+}
+
 async function sendTelegramMessage(message: string): Promise<void> {
   const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
   const payload: TelegramPayload = {
@@ -99,10 +119,12 @@ async function checkClaudeCode(): Promise<string | null> {
         releaseDate = releases[0].upload_time.slice(0, 10);
         if (data.info.release_notes) changelog = data.info.release_notes;
       }
-      const summary = `New Claude Code Release: v${latestVersion} (Date: ${releaseDate})\nConcise Changelog: ${changelog.slice(
-        0,
-        200
-      )}...`;
+      const summary = generateMessage(
+        'Claude Code',
+        `v${latestVersion}`,
+        `${changelog.slice(0, 200)}...`,
+        'https://docs.anthropic.com/en/docs/claude-code'
+      );
       await saveValue(FILES.claude, latestVersion);
       return summary;
     }
@@ -138,8 +160,12 @@ async function checkCursor(): Promise<string | null> {
     const lastHash = await getLastValue(FILES.cursor);
 
     if (contentHash !== lastHash) {
-      const releaseDate = new Date().toISOString().slice(0, 10);
-      const summary = `New Cursor Update: ${latestTitle} (Date: ${releaseDate})\nConcise Changelog: ${bodyText}...`;
+      const summary = generateMessage(
+        'Cursor',
+        latestTitle,
+        `${bodyText}...`,
+        'https://cursor.com/changelog'
+      );
       await saveValue(FILES.cursor, contentHash);
       return summary;
     }
@@ -191,7 +217,12 @@ async function checkV0(): Promise<string | null> {
     const lastHash = await getLastValue(FILES.v0);
 
     if (contentHash !== lastHash) {
-      const summary = `New v0 Update: ${latestV0Entry.title} (Date: ${latestV0Entry.date})\nConcise Changelog: ${latestV0Entry.changelog}...`;
+      const summary = generateMessage(
+        'v0',
+        latestV0Entry.title,
+        `${latestV0Entry.changelog}...`,
+        'https://vercel.com/changelog'
+      );
       await saveValue(FILES.v0, contentHash);
       return summary;
     }
@@ -247,7 +278,12 @@ async function checkAIElements(): Promise<string | null> {
     const lastHash = await getLastValue(FILES.elements);
 
     if (contentHash !== lastHash) {
-      const summary = `New AI Elements Update: ${latestElementsEntry.title} (Date: ${latestElementsEntry.date})\nConcise Changelog: ${latestElementsEntry.changelog}...`;
+      const summary = generateMessage(
+        'AI Elements',
+        latestElementsEntry.title,
+        `${latestElementsEntry.changelog}...`,
+        'https://vercel.com/changelog'
+      );
       await saveValue(FILES.elements, contentHash);
       return summary;
     }
@@ -271,9 +307,13 @@ async function checkGitHubRepo(
     const lastTag = await getLastValue(FILES[fileKey]);
 
     if (latestTag !== lastTag) {
-      const releaseDate = data.published_at.slice(0, 10);
       const changelog = data.body.replace(/\n/g, ' ').slice(0, 300);
-      const summary = `New ${name} Release: ${latestTag} (Date: ${releaseDate})\nConcise Changelog: ${changelog}...`;
+      const summary = generateMessage(
+        name,
+        latestTag,
+        `${changelog}...`,
+        `https://github.com/${repo}/releases/tag/${latestTag}`
+      );
       await saveValue(FILES[fileKey], latestTag);
       return summary;
     }
