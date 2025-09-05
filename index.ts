@@ -98,26 +98,23 @@ async function checkClaudeCode(): Promise<string | null> {
   try {
     const { data } = await axios.get(url);
 
-    // Extract the first changelog entry (latest release)
     const lines = data.split('\n');
     let version = '';
     let changelog = '';
     let foundFirstEntry = false;
 
     for (const line of lines) {
-      // Look for version headers like "## 1.0.106"
       if (line.match(/^##\s+\d+\.\d+(\.\d+)?$/)) {
-        if (foundFirstEntry) break; // We've captured the first entry
+        if (foundFirstEntry) break;
         version = line.replace(/^##\s+/, '').trim();
         foundFirstEntry = true;
         continue;
       }
 
-      // Capture bullet points until next version header
       if (foundFirstEntry && line.match(/^-\s+/)) {
         const bulletText = line.replace(/^-\s+/, '').trim();
         if (bulletText) {
-          changelog += bulletText + ' ';
+          changelog += `• ${bulletText}\n`;
         }
       }
     }
@@ -133,7 +130,7 @@ async function checkClaudeCode(): Promise<string | null> {
     if (contentHash !== lastHash) {
       const summary = generateMessage({
         toolName: 'claude code',
-        changelog: changelog.slice(0, 200),
+        changelog: changelog.trim(),
         link: 'https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md',
       });
       await saveValue(FILES.claude, contentHash);
@@ -141,6 +138,87 @@ async function checkClaudeCode(): Promise<string | null> {
     }
   } catch (error) {
     console.error('Claude check error:', (error as Error).message);
+  }
+  return null;
+}
+
+async function checkAISDK(): Promise<string | null> {
+  const url =
+    'https://raw.githubusercontent.com/vercel/ai/main/packages/ai/CHANGELOG.md';
+  try {
+    const { data } = await axios.get(url);
+
+    const lines = data.split('\n');
+    let version = '';
+    let changelog = '';
+    let foundFirstEntry = false;
+
+    for (const line of lines) {
+      if (line.match(/^##\s+\d+\.\d+\.\d+/)) {
+        if (foundFirstEntry) break;
+        version = line.replace(/^##\s+/, '').trim();
+        foundFirstEntry = true;
+        continue;
+      }
+
+      if (foundFirstEntry) {
+        const bulletMatch = line.match(/^(\s*)[-*+]\s+(.+)$/);
+        if (bulletMatch) {
+          const [, indentation, bulletText] = bulletMatch;
+          let cleanText = bulletText.trim();
+
+          const commitHashMatch = cleanText.match(/^[a-f0-9]{7,}:\s*(.+)$/);
+          if (commitHashMatch) {
+            cleanText = commitHashMatch[1];
+          }
+
+          // Skip noise but be more lenient for features
+          if (
+            !cleanText.toLowerCase().includes('thanks @') &&
+            !cleanText.startsWith('Updated dependencies') &&
+            !cleanText.startsWith('@') &&
+            cleanText.length > 15 &&
+            (cleanText.includes('feat') ||
+              cleanText.includes('fix') ||
+              cleanText.includes('add') ||
+              cleanText.includes('improve') ||
+              cleanText.includes('support') ||
+              cleanText.includes('throw') ||
+              cleanText.includes('when'))
+          ) {
+            cleanText = cleanText
+              .replace(/^(feat|fix|chore)\s*(\([^)]+\))?\s*:\s*/i, '')
+              .replace(/^-\s*/, '')
+              .trim();
+
+            if (cleanText.length > 8) {
+              const prefix = indentation.length > 0 ? '  • ' : '• ';
+              changelog += `${prefix}${cleanText}\n`;
+            }
+          }
+        }
+      }
+    }
+
+    if (!version) return null;
+
+    const contentHash = crypto
+      .createHash('sha256')
+      .update(version + changelog)
+      .digest('hex');
+    const lastHash = await getLastValue(FILES.aiSdk);
+
+    if (contentHash !== lastHash) {
+      const summary = generateMessage({
+        toolName: 'ai sdk',
+        changelog: changelog.trim(),
+        link: 'https://github.com/vercel/ai/blob/main/packages/ai/CHANGELOG.md',
+      });
+      await saveValue(FILES.aiSdk, contentHash);
+      return summary;
+    }
+  } catch (error) {
+    console.error('AI SDK check error:', (error as Error).message);
   }
   return null;
 }
@@ -307,10 +385,55 @@ async function checkGitHubRepo(
     const lastTag = await getLastValue(FILES[fileKey]);
 
     if (latestTag !== lastTag) {
-      const changelog = data.body.replace(/\n/g, ' ').slice(0, 300);
+      const lines = data.body.split('\n');
+      let changelog = '';
+
+      for (const line of lines) {
+        const bulletMatch = line.match(/^(\s*)[-*+]\s+(.+)$/);
+        const numberedMatch = line.match(/^(\s*)\d+\.\s+(.+)$/);
+
+        const match = bulletMatch || numberedMatch;
+        if (match) {
+          const [, indentation, bulletContent] = match;
+          if (!bulletContent) continue;
+          let cleanText = bulletContent.trim();
+
+          // Remove markdown links and commit hashes
+          cleanText = cleanText
+            .replace(/\[`[a-f0-9]+`\]\([^)]+\)/g, '')
+            .replace(/Thanks \[@\w+\]\([^)]+\)!\s*-\s*/, '')
+            .replace(/\s+/g, ' ')
+            .replace(/^-\s*/, '')
+            .trim();
+
+          if (
+            cleanText &&
+            cleanText.length > 8 &&
+            !cleanText.startsWith('Updated dependencies') &&
+            !cleanText.toLowerCase().includes('updated dependencies') &&
+            !cleanText.startsWith('@') &&
+            !cleanText.includes('ce06e13') &&
+            cleanText !== '-' &&
+            !cleanText.match(/^#{1,6}\s/) &&
+            !cleanText.match(/^\[.*\]:$/)
+          ) {
+            const prefix =
+              indentation && indentation.length > 2 ? '  • ' : '• ';
+            changelog += `${prefix}${cleanText}\n`;
+          }
+        }
+      }
+
+      if (!changelog.trim()) {
+        const cleanLines = lines
+          .filter((line) => line.trim() && !line.match(/^#{1,6}\s/))
+          .slice(0, 3);
+        changelog = cleanLines.map((line) => `• ${line.trim()}`).join('\n');
+      }
+
       const summary = generateMessage({
         toolName: name,
-        changelog: changelog,
+        changelog: changelog.trim(),
         link: `https://github.com/${repo}/releases/tag/${latestTag}`,
       });
       await saveValue(FILES[fileKey], latestTag);
@@ -336,7 +459,7 @@ async function checkGitHubRepo(
     checkCursor(),
     checkV0(),
     checkAIElements(),
-    checkGitHubRepo('vercel/ai', 'aiSdk', 'ai sdk'),
+    checkAISDK(),
     checkGitHubRepo('wevm/wagmi', 'wagmi', 'wagmi'),
     checkGitHubRepo('wevm/viem', 'viem', 'viem'),
   ]);
