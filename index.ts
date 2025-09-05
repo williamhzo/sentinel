@@ -36,7 +36,12 @@ const FILES = {
   elements: path.join(__dirname, 'cache', 'last_elements_hash.json'),
 };
 
-function generateMessage(toolName: string, title: string, changelog: string, link: string): string {
+function generateMessage(
+  toolName: string,
+  title: string,
+  changelog: string,
+  link: string
+): string {
   const currentDateTime = new Date().toLocaleString('en-US', {
     timeZone: 'UTC',
     year: 'numeric',
@@ -46,7 +51,7 @@ function generateMessage(toolName: string, title: string, changelog: string, lin
     minute: '2-digit',
     timeZoneName: 'short',
   });
-  
+
   return `new ${toolName} release
 
 📅 ${currentDateTime}
