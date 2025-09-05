@@ -1,1 +1,252 @@
-console.log("Hello via Bun!");
+import axios from 'axios';
+import * as cheerio from 'cheerio';
+import * as crypto from 'crypto';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+
+type TelegramPayload = {
+  chat_id: string;
+  text: string;
+  parse_mode: string;
+};
+
+type UpdateSummary = {
+  title: string;
+  date: string;
+  changelog: string;
+};
+
+const TELEGRAM_TOKEN = 'YOUR_TELEGRAM_API_TOKEN_HERE';
+const CHAT_ID = 'YOUR_CHAT_ID_HERE';
+
+const FILES = {
+  claude: path.join(__dirname, 'last_claude_version.json'),
+  cursor: path.join(__dirname, 'last_cursor_hash.json'),
+  v0: path.join(__dirname, 'last_v0_hash.json'),
+  aiSdk: path.join(__dirname, 'last_ai_sdk_tag.json'),
+  wagmi: path.join(__dirname, 'last_wagmi_tag.json'),
+  viem: path.join(__dirname, 'last_viem_tag.json'),
+  elements: path.join(__dirname, 'last_elements_tag.json'),
+};
+
+async function sendTelegramMessage(message: string): Promise<void> {
+  const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
+  const payload: TelegramPayload = {
+    chat_id: CHAT_ID,
+    text: message,
+    parse_mode: 'Markdown',
+  };
+  try {
+    await axios.post(url, payload);
+  } catch (error) {
+    console.error('Telegram send error:', (error as Error).message);
+  }
+}
+
+type StoredValue = {
+  value: string;
+};
+
+async function getLastValue(
+  filePath: string,
+  defaultValue: string = ''
+): Promise<string> {
+  try {
+    const data = await fs.readFile(filePath, 'utf8');
+    const parsed: StoredValue = JSON.parse(data);
+    return parsed.value || defaultValue;
+  } catch {
+    return defaultValue;
+  }
+}
+
+async function saveValue(filePath: string, value: string): Promise<void> {
+  const data: StoredValue = { value };
+  await fs.writeFile(filePath, JSON.stringify(data), 'utf8');
+}
+
+type PyPIResponse = {
+  info: { version: string; release_notes?: string };
+  releases: Record<string, Array<{ upload_time: string }>>;
+};
+
+type GitHubRelease = {
+  tag_name: string;
+  published_at: string;
+  body: string;
+};
+
+async function checkClaudeCode(): Promise<string | null> {
+  const url = 'https://pypi.org/pypi/claude-code-sdk/json';
+  try {
+    const { data }: { data: PyPIResponse } = await axios.get(url);
+    const latestVersion = data.info.version;
+    const lastVersion = await getLastValue(FILES.claude);
+
+    if (latestVersion !== lastVersion) {
+      const releases = data.releases[latestVersion];
+      let releaseDate = new Date().toISOString().slice(0, 10);
+      let changelog =
+        'Check https://docs.anthropic.com/en/docs/claude-code for full details.';
+      if (releases && releases.length > 0 && releases[0]) {
+        releaseDate = releases[0].upload_time.slice(0, 10);
+        if (data.info.release_notes) changelog = data.info.release_notes;
+      }
+      const summary = `New Claude Code Release: v${latestVersion} (Date: ${releaseDate})\nConcise Changelog: ${changelog.slice(
+        0,
+        200
+      )}...`;
+      await saveValue(FILES.claude, latestVersion);
+      return summary;
+    }
+  } catch (error) {
+    console.error('Claude check error:', (error as Error).message);
+  }
+  return null;
+}
+
+async function checkCursor(): Promise<string | null> {
+  const url = 'https://cursor.com/changelog';
+  try {
+    const { data } = await axios.get(url);
+    const $ = cheerio.load(data);
+    const entries = $('h2');
+    if (entries.length === 0) return null;
+
+    const latestTitle = $(entries[0]).text().trim();
+    let bodyText = '';
+    let current = $(entries[0]).next();
+    while (current.length && current[0] && current[0].name !== 'h2') {
+      if (['h3', 'p', 'ul', 'li'].includes(current[0].name || '')) {
+        bodyText += current.text().trim() + ' ';
+      }
+      current = current.next();
+    }
+    bodyText = bodyText.trim().slice(0, 500);
+
+    const contentHash = crypto
+      .createHash('sha256')
+      .update(latestTitle + bodyText)
+      .digest('hex');
+    const lastHash = await getLastValue(FILES.cursor);
+
+    if (contentHash !== lastHash) {
+      const releaseDate = new Date().toISOString().slice(0, 10);
+      const summary = `New Cursor Update: ${latestTitle} (Date: ${releaseDate})\nConcise Changelog: ${bodyText}...`;
+      await saveValue(FILES.cursor, contentHash);
+      return summary;
+    }
+  } catch (error) {
+    console.error('Cursor check error:', (error as Error).message);
+  }
+  return null;
+}
+
+// Check v0 (scrape Vercel changelog for v0 mentions)
+async function checkV0(): Promise<string | null> {
+  const url = 'https://vercel.com/changelog';
+  try {
+    const { data } = await axios.get(url);
+    const $ = cheerio.load(data);
+    const entries = $('article');
+    let latestV0Entry: UpdateSummary | null = null;
+    for (let i = 0; i < Math.min(5, entries.length); i++) {
+      const entry = $(entries[i]);
+      const titleElem = entry.find('h2:first');
+      let title = titleElem.text().trim().toLowerCase();
+      if (title.includes('v0')) {
+        const dateText = entry.find('p').text();
+        const dateMatch = dateText.match(
+          /(\w+ \d{1,2}(?:st|nd|rd|th)?, \d{4})/
+        );
+        const date = dateMatch
+          ? dateMatch[0]
+          : new Date().toISOString().slice(0, 10);
+        const body = entry
+          .find('p, ul > li')
+          .map((_, el) => $(el).text().trim())
+          .get()
+          .join(' ')
+          .slice(0, 300);
+        latestV0Entry = {
+          title: titleElem.text().trim(),
+          date,
+          changelog: body,
+        };
+        break;
+      }
+    }
+    if (!latestV0Entry) return null;
+
+    const contentHash = crypto
+      .createHash('sha256')
+      .update(JSON.stringify(latestV0Entry))
+      .digest('hex');
+    const lastHash = await getLastValue(FILES.v0);
+
+    if (contentHash !== lastHash) {
+      const summary = `New v0 Update: ${latestV0Entry.title} (Date: ${latestV0Entry.date})\nConcise Changelog: ${latestV0Entry.changelog}...`;
+      await saveValue(FILES.v0, contentHash);
+      return summary;
+    }
+  } catch (error) {
+    console.error('v0 check error:', (error as Error).message);
+  }
+  return null;
+}
+
+// Generic GitHub checker function
+async function checkGitHubRepo(
+  repo: string,
+  fileKey: keyof typeof FILES,
+  name: string
+): Promise<string | null> {
+  const url = `https://api.github.com/repos/${repo}/releases/latest`;
+  try {
+    const { data }: { data: GitHubRelease } = await axios.get(url, {
+      headers: { Accept: 'application/vnd.github.v3+json' },
+    });
+    const latestTag = data.tag_name;
+    const lastTag = await getLastValue(FILES[fileKey]);
+
+    if (latestTag !== lastTag) {
+      const releaseDate = data.published_at.slice(0, 10);
+      const changelog = data.body.replace(/\n/g, ' ').slice(0, 300);
+      const summary = `New ${name} Release: ${latestTag} (Date: ${releaseDate})\nConcise Changelog: ${changelog}...`;
+      await saveValue(FILES[fileKey], latestTag);
+      return summary;
+    }
+  } catch (error) {
+    console.error(`${name} check error:`, (error as Error).message);
+  }
+  return null;
+}
+
+// Main execution
+(async () => {
+  const [
+    claudeUpdate,
+    cursorUpdate,
+    v0Update,
+    aiSdkUpdate,
+    wagmiUpdate,
+    viemUpdate,
+    elementsUpdate,
+  ] = await Promise.all([
+    checkClaudeCode(),
+    checkCursor(),
+    checkV0(),
+    checkGitHubRepo('vercel/ai', 'aiSdk', 'Vercel AI SDK'),
+    checkGitHubRepo('wevm/wagmi', 'wagmi', 'wagmi'),
+    checkGitHubRepo('wevm/viem', 'viem', 'viem'),
+    checkGitHubRepo('vercel/ai-elements', 'elements', 'Vercel AI Elements'),
+  ]);
+
+  if (claudeUpdate) await sendTelegramMessage(claudeUpdate);
+  if (cursorUpdate) await sendTelegramMessage(cursorUpdate);
+  if (v0Update) await sendTelegramMessage(v0Update);
+  if (aiSdkUpdate) await sendTelegramMessage(aiSdkUpdate);
+  if (wagmiUpdate) await sendTelegramMessage(wagmiUpdate);
+  if (viemUpdate) await sendTelegramMessage(viemUpdate);
+  if (elementsUpdate) await sendTelegramMessage(elementsUpdate);
+})().catch(console.error);
