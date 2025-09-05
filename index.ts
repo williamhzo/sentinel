@@ -36,25 +36,18 @@ const FILES = {
   elements: path.join(__dirname, 'cache', 'last_elements_hash.json'),
 };
 
-function generateMessage(
-  toolName: string,
-  title: string,
-  changelog: string,
-  link: string
-): string {
-  const currentDateTime = new Date().toLocaleString('en-US', {
-    timeZone: 'America/New_York',
-    year: 'numeric',
-    month: 'short',
-  });
+type Message = {
+  toolName: string;
+  changelog: string;
+  link: string;
+};
 
+function generateMessage({ toolName, changelog, link }: Message): string {
   return `${toolName} release
 
-📅 ${currentDateTime.toLowerCase()}
+${changelog.toLowerCase()}
 
-${title}
-
-🔗 ${link}`;
+${link}`;
 }
 
 async function sendTelegramMessage(message: string): Promise<void> {
@@ -112,18 +105,19 @@ async function checkClaudeCode(): Promise<string | null> {
     let foundFirstEntry = false;
 
     for (const line of lines) {
-      // Look for version headers like "## 1.0.0" or "# 1.0.0"
-      if (line.match(/^##?\s+\d+\.\d+\.\d+/)) {
+      // Look for version headers like "## 1.0.106"
+      if (line.match(/^##\s+\d+\.\d+(\.\d+)?$/)) {
         if (foundFirstEntry) break; // We've captured the first entry
-        version = line.replace(/^##?\s+/, '').trim();
+        version = line.replace(/^##\s+/, '').trim();
         foundFirstEntry = true;
         continue;
       }
 
-      // Capture content until next version header
-      if (foundFirstEntry && !line.match(/^##?\s+\d+\.\d+\.\d+/)) {
-        if (line.trim()) {
-          changelog += line.trim() + ' ';
+      // Capture bullet points until next version header
+      if (foundFirstEntry && line.match(/^-\s+/)) {
+        const bulletText = line.replace(/^-\s+/, '').trim();
+        if (bulletText) {
+          changelog += bulletText + ' ';
         }
       }
     }
@@ -137,12 +131,11 @@ async function checkClaudeCode(): Promise<string | null> {
     const lastHash = await getLastValue(FILES.claude);
 
     if (contentHash !== lastHash) {
-      const summary = generateMessage(
-        'claude code',
-        `v${version}`,
-        changelog.slice(0, 200),
-        'https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md'
-      );
+      const summary = generateMessage({
+        toolName: 'claude code',
+        changelog: changelog.slice(0, 200),
+        link: 'https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md',
+      });
       await saveValue(FILES.claude, contentHash);
       return summary;
     }
@@ -161,29 +154,20 @@ async function checkCursor(): Promise<string | null> {
     if (entries.length === 0) return null;
 
     const latestTitle = $(entries[0]).text().trim();
-    let bodyText = '';
-    let current = $(entries[0]).next();
-    while (current.length && current[0] && current[0].name !== 'h2') {
-      if (['h3', 'p', 'ul', 'li'].includes(current[0].name || '')) {
-        bodyText += current.text().trim() + ' ';
-      }
-      current = current.next();
-    }
-    bodyText = bodyText.trim().slice(0, 500);
+    const changelog = $(entries[0]).next().text().trim();
 
     const contentHash = crypto
       .createHash('sha256')
-      .update(latestTitle + bodyText)
+      .update(latestTitle)
       .digest('hex');
     const lastHash = await getLastValue(FILES.cursor);
 
     if (contentHash !== lastHash) {
-      const summary = generateMessage(
-        'cursor',
-        latestTitle.toLowerCase(),
-        `${bodyText}...`,
-        'https://cursor.com/changelog'
-      );
+      const summary = generateMessage({
+        toolName: 'cursor',
+        changelog: latestTitle,
+        link: 'https://cursor.com/changelog',
+      });
       await saveValue(FILES.cursor, contentHash);
       return summary;
     }
@@ -235,12 +219,11 @@ async function checkV0(): Promise<string | null> {
     const lastHash = await getLastValue(FILES.v0);
 
     if (contentHash !== lastHash) {
-      const summary = generateMessage(
-        'v0',
-        latestV0Entry.title.toLowerCase(),
-        `${latestV0Entry.changelog}...`,
-        'https://vercel.com/changelog'
-      );
+      const summary = generateMessage({
+        toolName: 'v0',
+        changelog: latestV0Entry.title,
+        link: 'https://vercel.com/changelog',
+      });
       await saveValue(FILES.v0, contentHash);
       return summary;
     }
@@ -296,12 +279,11 @@ async function checkAIElements(): Promise<string | null> {
     const lastHash = await getLastValue(FILES.elements);
 
     if (contentHash !== lastHash) {
-      const summary = generateMessage(
-        'ai elements',
-        latestElementsEntry.title.toLowerCase(),
-        `${latestElementsEntry.changelog}...`,
-        'https://vercel.com/changelog'
-      );
+      const summary = generateMessage({
+        toolName: 'ai elements',
+        changelog: latestElementsEntry.title,
+        link: 'https://vercel.com/changelog',
+      });
       await saveValue(FILES.elements, contentHash);
       return summary;
     }
@@ -326,12 +308,11 @@ async function checkGitHubRepo(
 
     if (latestTag !== lastTag) {
       const changelog = data.body.replace(/\n/g, ' ').slice(0, 300);
-      const summary = generateMessage(
-        name,
-        latestTag,
-        `${changelog}...`,
-        `https://github.com/${repo}/releases/tag/${latestTag}`
-      );
+      const summary = generateMessage({
+        toolName: name,
+        changelog: changelog,
+        link: `https://github.com/${repo}/releases/tag/${latestTag}`,
+      });
       await saveValue(FILES[fileKey], latestTag);
       return summary;
     }
