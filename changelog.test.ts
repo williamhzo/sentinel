@@ -364,7 +364,7 @@ describe('Changelog Parsers', () => {
         link: 'https://example.com/changelog',
       });
 
-      const expected = `test tool release
+      const expected = `**test tool release**
 
 • fixed bug
 • added feature
@@ -381,7 +381,7 @@ https://example.com/changelog`;
         link: 'https://example.com/changelog',
       });
 
-      const expected = `test tool release
+      const expected = `**test tool release**
 
 
 
