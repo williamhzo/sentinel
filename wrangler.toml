@@ -1,14 +1,14 @@
 name = "sentinel"
 main = "worker.ts"
-compatibility_date = "2024-01-01"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
 
 [triggers]
 crons = ["*/10 * * * *"]  # Every 10 minutes
 
 [[kv_namespaces]]
 binding = "SENTINEL_KV"
-id = "your-kv-namespace-id"  # Replace with actual KV namespace ID
-preview_id = "your-preview-kv-namespace-id"  # Replace with preview KV namespace ID
+id = "5898869a24434a1985267998fa95b596"
 
 [vars]
 # Environment variables (non-sensitive)
