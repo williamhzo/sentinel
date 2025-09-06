@@ -2,12 +2,12 @@ import { describe, it, expect } from 'bun:test';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { generateMessage } from './utils';
+import { CHANGELOG_URLS, GITHUB_LINKS } from './constants';
 
 describe('Changelog Parsers', () => {
   describe('Claude Code', () => {
-    it('should parse Claude changelog correctly', async () => {
-      const url =
-        'https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md';
+      it('should parse Claude changelog correctly', async () => {
+        const url = CHANGELOG_URLS.CLAUDE;
 
       const { data } = await axios.get(url);
       const lines = data.split('\n');
@@ -35,11 +35,11 @@ describe('Changelog Parsers', () => {
       expect(version).toMatch(/^\d+\.\d+(\.\d+)?$/);
       expect(changelog.trim()).toBeTruthy();
 
-      const message = generateMessage({
-        toolName: 'claude code',
-        changelog: changelog.trim(),
-        link: 'https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md',
-      });
+        const message = generateMessage({
+          toolName: 'claude code',
+          changelog: changelog.trim(),
+          link: GITHUB_LINKS.CLAUDE,
+        });
 
       expect(message).toContain('claude code release');
       expect(message).toContain('https://github.com/anthropics/claude-code');
@@ -47,9 +47,8 @@ describe('Changelog Parsers', () => {
   });
 
   describe('AI SDK', () => {
-    it('should parse AI SDK changelog correctly', async () => {
-      const url =
-        'https://raw.githubusercontent.com/vercel/ai/main/packages/ai/CHANGELOG.md';
+      it('should parse AI SDK changelog correctly', async () => {
+        const url = CHANGELOG_URLS.AI_SDK;
 
       const { data } = await axios.get(url);
       const lines = data.split('\n');
@@ -131,11 +130,11 @@ describe('Changelog Parsers', () => {
       expect(version).toBeTruthy();
       expect(version).toMatch(/^\d+\.\d+\.\d+$/);
 
-      const message = generateMessage({
-        toolName: 'ai sdk',
-        changelog: changelog.trim() || 'No significant changes found',
-        link: 'https://github.com/vercel/ai/blob/main/packages/ai/CHANGELOG.md',
-      });
+        const message = generateMessage({
+          toolName: 'ai sdk',
+          changelog: changelog.trim() || 'No significant changes found',
+          link: GITHUB_LINKS.AI_SDK,
+        });
 
       expect(message).toContain('ai sdk release');
       expect(message).toContain('https://github.com/vercel/ai');
@@ -143,9 +142,8 @@ describe('Changelog Parsers', () => {
   });
 
   describe('Wagmi', () => {
-    it('should parse Wagmi changelog correctly', async () => {
-      const url =
-        'https://raw.githubusercontent.com/wevm/wagmi/refs/heads/main/packages/core/CHANGELOG.md';
+      it('should parse Wagmi changelog correctly', async () => {
+        const url = CHANGELOG_URLS.WAGMI_CORE;
 
       const { data } = await axios.get(url);
       const lines = data.split('\n');
@@ -200,11 +198,11 @@ describe('Changelog Parsers', () => {
       expect(version).toMatch(/^\d+\.\d+\.\d+$/);
       expect(changelog.trim()).toBeTruthy();
 
-      const message = generateMessage({
-        toolName: 'wagmi',
-        changelog: changelog.trim(),
-        link: 'https://github.com/wevm/wagmi/blob/main/packages/core/CHANGELOG.md',
-      });
+        const message = generateMessage({
+          toolName: 'wagmi',
+          changelog: changelog.trim(),
+          link: GITHUB_LINKS.WAGMI_CORE,
+        });
 
       expect(message).toContain('wagmi release');
       expect(message).toContain('https://github.com/wevm/wagmi');
@@ -212,9 +210,8 @@ describe('Changelog Parsers', () => {
   });
 
   describe('Viem', () => {
-    it('should parse Viem changelog correctly', async () => {
-      const url =
-        'https://raw.githubusercontent.com/wevm/viem/refs/heads/main/src/CHANGELOG.md';
+      it('should parse Viem changelog correctly', async () => {
+        const url = CHANGELOG_URLS.VIEM;
 
       const { data } = await axios.get(url);
       const lines = data.split('\n');
@@ -267,11 +264,11 @@ describe('Changelog Parsers', () => {
       expect(version).toMatch(/^\d+\.\d+\.\d+$/);
       expect(changelog.trim()).toBeTruthy();
 
-      const message = generateMessage({
-        toolName: 'viem',
-        changelog: changelog.trim(),
-        link: 'https://github.com/wevm/viem/blob/main/src/CHANGELOG.md',
-      });
+        const message = generateMessage({
+          toolName: 'viem',
+          changelog: changelog.trim(),
+          link: GITHUB_LINKS.VIEM,
+        });
 
       expect(message).toContain('viem release');
       expect(message).toContain('https://github.com/wevm/viem');
@@ -279,8 +276,8 @@ describe('Changelog Parsers', () => {
   });
 
   describe('Cursor', () => {
-    it('should parse Cursor changelog correctly', async () => {
-      const url = 'https://cursor.com/changelog';
+      it('should parse Cursor changelog correctly', async () => {
+        const url = CHANGELOG_URLS.CURSOR;
 
       const { data } = await axios.get(url);
       const $ = cheerio.load(data);
@@ -295,11 +292,11 @@ describe('Changelog Parsers', () => {
 
       expect(latestTitle).toBeTruthy();
 
-      const message = generateMessage({
-        toolName: 'cursor',
-        changelog: latestTitle,
-        link: 'https://cursor.com/changelog',
-      });
+        const message = generateMessage({
+          toolName: 'cursor',
+          changelog: latestTitle,
+          link: GITHUB_LINKS.CURSOR,
+        });
 
       expect(message).toContain('cursor release');
       expect(message).toContain('https://cursor.com/changelog');

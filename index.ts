@@ -4,6 +4,7 @@ import * as crypto from 'crypto';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { generateMessage } from './utils';
+import { CHANGELOG_URLS, GITHUB_LINKS } from './constants';
 
 type TelegramPayload = {
   chat_id: string;
@@ -74,8 +75,7 @@ async function saveValue(filePath: string, value: string): Promise<void> {
 }
 
 async function checkClaudeCode(): Promise<string | null> {
-  const url =
-    'https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md';
+  const url = CHANGELOG_URLS.CLAUDE;
   try {
     const { data } = await axios.get(url);
 
@@ -112,7 +112,7 @@ async function checkClaudeCode(): Promise<string | null> {
       const summary = generateMessage({
         toolName: 'claude code',
         changelog: changelog.trim(),
-        link: 'https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md',
+        link: GITHUB_LINKS.CLAUDE,
       });
       await saveValue(FILES.claude, contentHash);
       return summary;
@@ -124,8 +124,7 @@ async function checkClaudeCode(): Promise<string | null> {
 }
 
 async function checkAISDK(): Promise<string | null> {
-  const url =
-    'https://raw.githubusercontent.com/vercel/ai/main/packages/ai/CHANGELOG.md';
+  const url = CHANGELOG_URLS.AI_SDK;
   try {
     const { data } = await axios.get(url);
 
@@ -222,7 +221,7 @@ async function checkAISDK(): Promise<string | null> {
       const summary = generateMessage({
         toolName: 'ai sdk',
         changelog: changelog.trim(),
-        link: 'https://github.com/vercel/ai/blob/main/packages/ai/CHANGELOG.md',
+        link: GITHUB_LINKS.AI_SDK,
       });
       await saveValue(FILES.aiSdk, contentHash);
       return summary;
@@ -234,7 +233,7 @@ async function checkAISDK(): Promise<string | null> {
 }
 
 async function checkCursor(): Promise<string | null> {
-  const url = 'https://cursor.com/changelog';
+  const url = CHANGELOG_URLS.CURSOR;
   try {
     const { data } = await axios.get(url);
     const $ = cheerio.load(data);
@@ -254,7 +253,7 @@ async function checkCursor(): Promise<string | null> {
       const summary = generateMessage({
         toolName: 'cursor',
         changelog: latestTitle,
-        link: 'https://cursor.com/changelog',
+        link: GITHUB_LINKS.CURSOR,
       });
       await saveValue(FILES.cursor, contentHash);
       return summary;
@@ -266,7 +265,7 @@ async function checkCursor(): Promise<string | null> {
 }
 
 async function checkV0(): Promise<string | null> {
-  const url = 'https://vercel.com/changelog';
+  const url = CHANGELOG_URLS.VERCEL;
   try {
     const { data } = await axios.get(url);
     const $ = cheerio.load(data);
@@ -310,7 +309,7 @@ async function checkV0(): Promise<string | null> {
       const summary = generateMessage({
         toolName: 'v0',
         changelog: latestV0Entry.title,
-        link: 'https://vercel.com/changelog',
+        link: GITHUB_LINKS.VERCEL,
       });
       await saveValue(FILES.v0, contentHash);
       return summary;
@@ -322,7 +321,7 @@ async function checkV0(): Promise<string | null> {
 }
 
 async function checkAIElements(): Promise<string | null> {
-  const url = 'https://vercel.com/changelog';
+  const url = CHANGELOG_URLS.VERCEL;
   try {
     const { data } = await axios.get(url);
     const $ = cheerio.load(data);
@@ -370,7 +369,7 @@ async function checkAIElements(): Promise<string | null> {
       const summary = generateMessage({
         toolName: 'ai elements',
         changelog: latestElementsEntry.title,
-        link: 'https://vercel.com/changelog',
+        link: GITHUB_LINKS.VERCEL,
       });
       await saveValue(FILES.elements, contentHash);
       return summary;
@@ -382,8 +381,7 @@ async function checkAIElements(): Promise<string | null> {
 }
 
 async function checkWagmiChangelog(): Promise<string | null> {
-  const url =
-    'https://raw.githubusercontent.com/wevm/wagmi/refs/heads/main/packages/core/CHANGELOG.md';
+  const url = CHANGELOG_URLS.WAGMI_CORE;
   try {
     const { data } = await axios.get(url);
     const lines = data.split('\n');
@@ -448,7 +446,7 @@ async function checkWagmiChangelog(): Promise<string | null> {
       const summary = generateMessage({
         toolName: 'wagmi',
         changelog: changelog.trim(),
-        link: 'https://github.com/wevm/wagmi/blob/main/packages/core/CHANGELOG.md',
+        link: GITHUB_LINKS.WAGMI_CORE,
       });
       await saveValue(FILES.wagmi, contentHash);
       return summary;
@@ -460,8 +458,7 @@ async function checkWagmiChangelog(): Promise<string | null> {
 }
 
 async function checkViemChangelog(): Promise<string | null> {
-  const url =
-    'https://raw.githubusercontent.com/wevm/viem/refs/heads/main/src/CHANGELOG.md';
+  const url = CHANGELOG_URLS.VIEM;
   try {
     const { data } = await axios.get(url);
     const lines = data.split('\n');
@@ -524,7 +521,7 @@ async function checkViemChangelog(): Promise<string | null> {
       const summary = generateMessage({
         toolName: 'viem',
         changelog: changelog.trim(),
-        link: 'https://github.com/wevm/viem/blob/main/src/CHANGELOG.md',
+        link: GITHUB_LINKS.VIEM,
       });
       await saveValue(FILES.viem, contentHash);
       return summary;
