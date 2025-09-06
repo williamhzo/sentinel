@@ -1,0 +1,20 @@
+name = "sentinel"
+main = "worker.ts"
+compatibility_date = "2024-01-01"
+
+[triggers]
+crons = ["*/10 * * * *"]  # Every 10 minutes
+
+[[kv_namespaces]]
+binding = "SENTINEL_KV"
+id = "your-kv-namespace-id"  # Replace with actual KV namespace ID
+preview_id = "your-preview-kv-namespace-id"  # Replace with preview KV namespace ID
+
+[vars]
+# Environment variables (non-sensitive)
+
+[env.production.vars]
+# Production environment variables
+
+[env.development.vars]
+# Development environment variables
