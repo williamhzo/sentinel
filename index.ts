@@ -177,14 +177,17 @@ async function checkAISDK(): Promise<string | null> {
             !cleanText.toLowerCase().includes('thanks @') &&
             !cleanText.startsWith('Updated dependencies') &&
             !cleanText.startsWith('@') &&
-            cleanText.length > 15 &&
+            cleanText.length > 10 &&
             (cleanText.includes('feat') ||
               cleanText.includes('fix') ||
               cleanText.includes('add') ||
               cleanText.includes('improve') ||
               cleanText.includes('support') ||
               cleanText.includes('throw') ||
-              cleanText.includes('when'))
+              cleanText.includes('when') ||
+              cleanText.includes('error') ||
+              cleanText.includes('callback') ||
+              cleanText.includes('sent'))
           ) {
             cleanText = cleanText
               .replace(/^(feat|fix|chore)\s*(\([^)]+\))?\s*:\s*/i, '')
@@ -412,7 +415,9 @@ async function checkGitHubRepo(
             !cleanText.startsWith('Updated dependencies') &&
             !cleanText.toLowerCase().includes('updated dependencies') &&
             !cleanText.startsWith('@') &&
-            !cleanText.includes('ce06e13') &&
+            !cleanText.match(/[a-f0-9]{7,}/) &&
+            !cleanText.includes('core@') &&
+            !cleanText.includes('connectors@') &&
             cleanText !== '-' &&
             !cleanText.match(/^#{1,6}\s/) &&
             !cleanText.match(/^\[.*\]:$/)
