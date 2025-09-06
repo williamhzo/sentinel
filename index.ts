@@ -3,6 +3,7 @@ import * as cheerio from 'cheerio';
 import * as crypto from 'crypto';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { generateMessage } from './utils';
 
 type TelegramPayload = {
   chat_id: string;
@@ -35,20 +36,6 @@ const FILES = {
   viem: path.join(__dirname, 'cache', 'last_viem_tag.json'),
   elements: path.join(__dirname, 'cache', 'last_elements_hash.json'),
 };
-
-type Message = {
-  toolName: string;
-  changelog: string;
-  link: string;
-};
-
-function generateMessage({ toolName, changelog, link }: Message): string {
-  return `${toolName} release
-
-${changelog.toLowerCase()}
-
-${link}`;
-}
 
 async function sendTelegramMessage(message: string): Promise<void> {
   const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
