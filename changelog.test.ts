@@ -281,20 +281,77 @@ describe('Changelog Parsers', () => {
 
       const { data } = await axios.get(url);
       const $ = cheerio.load(data);
-      const entries = $('h2');
+
+      // Find the main entry
+      const mainEntrySelector = 'h2';
+      const entries = $(mainEntrySelector);
 
       if (entries.length === 0) {
         expect.unreachable('No changelog entries found');
       }
 
-      const latestTitle = $(entries[0]).text().trim();
-      const changelog = $(entries[0]).next().text().trim();
+      let changelog = '';
 
-      expect(latestTitle).toBeTruthy();
+      // Get the main h2 title (no bullet)
+      const mainTitle = $(entries[0]).text().trim();
+      if (mainTitle) {
+        changelog += `${mainTitle}\n`;
+
+        // Find h3 elements that are siblings after this h2
+        let currentElement = $(entries[0]).next();
+        while (currentElement.length && !currentElement.is('h2')) {
+          if (currentElement.is('h3')) {
+            const h3Text = currentElement.text().trim();
+            if (h3Text) {
+              changelog += `• ${h3Text}\n`;
+            }
+          }
+          currentElement = currentElement.next();
+        }
+      }
+
+      // Add blank line before summary sections
+      changelog += '\n';
+
+      // Find improvements and patches sections that come after the first h2 but before the next h2
+      let sectionElement = $(entries[0]).next();
+      while (sectionElement.length && !sectionElement.is('h2')) {
+        if (sectionElement.is('details')) {
+          const summary = sectionElement.find('summary').text().toLowerCase();
+          if (summary.includes('improvements')) {
+            changelog += `Improvements\n`;
+            sectionElement.find('li').each((_, li) => {
+              const improvementText = $(li).text().trim();
+              if (improvementText) {
+                changelog += `  • ${improvementText}\n`;
+              }
+            });
+            changelog += '\n'; // Add space after improvements
+          } else if (summary.includes('patches')) {
+            changelog += `Patches\n`;
+            sectionElement.find('li').each((_, li) => {
+              const patchText = $(li).text().trim();
+              // Remove version numbers like "1.5.1:" from the beginning
+              const cleanPatchText = patchText.replace(
+                /^\d+\.\d+(\.\d+)?:\s*/,
+                ''
+              );
+              if (cleanPatchText) {
+                changelog += `  • ${cleanPatchText}\n`;
+              }
+            });
+          }
+        }
+        sectionElement = sectionElement.next();
+      }
+
+      expect(mainTitle).toBeTruthy();
+      expect(changelog.trim()).toBeTruthy();
+      expect(changelog).toContain('•'); // Should have bullet points
 
       const message = generateMessage({
         toolName: 'cursor',
-        changelog: latestTitle,
+        changelog: changelog.trim(),
         link: GITHUB_LINKS.CURSOR,
       });
 
