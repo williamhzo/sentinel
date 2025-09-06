@@ -25,6 +25,6 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false,
-    "types": ["@cloudflare/workers-types"]
+    "types": ["bun", "@cloudflare/workers-types"]
   }
 }
