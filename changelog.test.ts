@@ -282,7 +282,6 @@ describe('Changelog Parsers', () => {
       const { data } = await axios.get(url);
       const $ = cheerio.load(data);
 
-      // Find the main entry
       const mainEntrySelector = 'h2';
       const entries = $(mainEntrySelector);
 
@@ -292,12 +291,10 @@ describe('Changelog Parsers', () => {
 
       let changelog = '';
 
-      // Get the main h2 title (no bullet)
       const mainTitle = $(entries[0]).text().trim();
       if (mainTitle) {
         changelog += `${mainTitle}\n`;
 
-        // Find h3 elements that are siblings after this h2
         let currentElement = $(entries[0]).next();
         while (currentElement.length && !currentElement.is('h2')) {
           if (currentElement.is('h3')) {
@@ -326,12 +323,11 @@ describe('Changelog Parsers', () => {
                 changelog += `  • ${improvementText}\n`;
               }
             });
-            changelog += '\n'; // Add space after improvements
+            changelog += '\n';
           } else if (summary.includes('patches')) {
             changelog += `Patches\n`;
             sectionElement.find('li').each((_, li) => {
               const patchText = $(li).text().trim();
-              // Remove version numbers like "1.5.1:" from the beginning
               const cleanPatchText = patchText.replace(
                 /^\d+\.\d+(\.\d+)?:\s*/,
                 ''
@@ -347,7 +343,7 @@ describe('Changelog Parsers', () => {
 
       expect(mainTitle).toBeTruthy();
       expect(changelog.trim()).toBeTruthy();
-      expect(changelog).toContain('•'); // Should have bullet points
+      expect(changelog).toContain('•');
 
       const message = generateMessage({
         toolName: 'cursor',

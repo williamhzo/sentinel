@@ -137,14 +137,12 @@ async function checkAISDK(): Promise<string | null> {
 
     for (const line of lines) {
       if (line.match(/^##\s+\d+\.\d+\.\d+/)) {
-        // If we have a version with meaningful changes, use it
         if (currentChangelog.trim() && !foundVersionWithChanges) {
           version = currentVersion;
           changelog = currentChangelog;
           foundVersionWithChanges = true;
           break;
         }
-        // Start tracking new version
         currentVersion = line.replace(/^##\s+/, '').trim();
         currentChangelog = '';
         continue;
@@ -161,7 +159,6 @@ async function checkAISDK(): Promise<string | null> {
             cleanText = commitHashMatch[1];
           }
 
-          // Filter meaningful changes - be more lenient
           if (
             cleanText &&
             cleanText.length > 8 &&
@@ -171,7 +168,6 @@ async function checkAISDK(): Promise<string | null> {
             !cleanText.match(/^[a-f0-9]{7,}/) &&
             cleanText !== '-'
           ) {
-            // Look for meaningful content or just take first few items if nothing specific found
             const isMeaningful =
               cleanText.includes('feat') ||
               cleanText.includes('fix') ||
@@ -203,7 +199,6 @@ async function checkAISDK(): Promise<string | null> {
       }
     }
 
-    // If no version with changes was found during iteration, use the last one we processed
     if (!foundVersionWithChanges && currentChangelog.trim()) {
       version = currentVersion;
       changelog = currentChangelog;
@@ -245,12 +240,10 @@ async function checkCursor(): Promise<string | null> {
 
     let changelog = '';
 
-    // Get the main h2 title (no bullet)
     const mainTitle = $(entries[0]).text().trim();
     if (mainTitle) {
       changelog += `${mainTitle}\n`;
 
-      // Find h3 elements that are siblings after this h2
       let currentElement = $(entries[0]).next();
       while (currentElement.length && !currentElement.is('h2')) {
         if (currentElement.is('h3')) {
@@ -263,10 +256,8 @@ async function checkCursor(): Promise<string | null> {
       }
     }
 
-    // Add blank line before summary sections
     changelog += '\n';
 
-    // Find improvements and patches sections that come after the first h2 but before the next h2
     let sectionElement = $(entries[0]).next();
     while (sectionElement.length && !sectionElement.is('h2')) {
       if (sectionElement.is('details')) {
@@ -279,12 +270,11 @@ async function checkCursor(): Promise<string | null> {
               changelog += `  • ${improvementText}\n`;
             }
           });
-          changelog += '\n'; // Add space after improvements
+          changelog += '\n';
         } else if (summary.includes('patches')) {
           changelog += `Patches\n`;
           sectionElement.find('li').each((_, li) => {
             const patchText = $(li).text().trim();
-            // Remove version numbers like "1.5.1:" from the beginning
             const cleanPatchText = patchText.replace(
               /^\d+\.\d+(\.\d+)?:\s*/,
               ''
@@ -458,9 +448,8 @@ async function checkWagmiChangelog(): Promise<string | null> {
           const [, indentation, bulletText] = bulletMatch;
           let cleanText = bulletText.trim();
 
-          // Remove commit hashes, pull request links, and thanks messages
           cleanText = cleanText
-            .replace(/\[#\d+\]\([^)]+\)/g, '') // Remove PR links
+            .replace(/\[#\d+\]\([^)]+\)/g, '')
             .replace(/\[`[a-f0-9]+`\]\([^)]+\)/g, '') // Remove commit hash links
             .replace(/Thanks \[@\w+\]\([^)]+\)!\s*-\s*/g, '') // Remove thanks messages
             .replace(/\[\`[a-f0-9]{7,}\`\]/g, '') // Remove commit hashes in backticks
@@ -535,9 +524,8 @@ async function checkViemChangelog(): Promise<string | null> {
           const [, indentation, bulletText] = bulletMatch;
           let cleanText = bulletText.trim();
 
-          // Remove commit hashes, pull request links, and thanks messages
           cleanText = cleanText
-            .replace(/\[#\d+\]\([^)]+\)/g, '') // Remove PR links
+            .replace(/\[#\d+\]\([^)]+\)/g, '')
             .replace(/\[`[a-f0-9]+`\]\([^)]+\)/g, '') // Remove commit hash links
             .replace(/Thanks \[@\w+\]\([^)]+\)!\s*-\s*/g, '') // Remove thanks messages
             .replace(/\[\`[a-f0-9]{7,}\`\]/g, '') // Remove commit hashes in backticks
