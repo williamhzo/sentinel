@@ -86,12 +86,6 @@ async function saveValue(filePath: string, value: string): Promise<void> {
   await fs.writeFile(filePath, JSON.stringify(data), 'utf8');
 }
 
-type GitHubRelease = {
-  tag_name: string;
-  published_at: string;
-  body: string;
-};
-
 async function checkClaudeCode(): Promise<string | null> {
   const url =
     'https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md';
@@ -151,17 +145,26 @@ async function checkAISDK(): Promise<string | null> {
     const lines = data.split('\n');
     let version = '';
     let changelog = '';
-    let foundFirstEntry = false;
+    let currentVersion = '';
+    let currentChangelog = '';
+    let foundVersionWithChanges = false;
 
     for (const line of lines) {
       if (line.match(/^##\s+\d+\.\d+\.\d+/)) {
-        if (foundFirstEntry) break;
-        version = line.replace(/^##\s+/, '').trim();
-        foundFirstEntry = true;
+        // If we have a version with meaningful changes, use it
+        if (currentChangelog.trim() && !foundVersionWithChanges) {
+          version = currentVersion;
+          changelog = currentChangelog;
+          foundVersionWithChanges = true;
+          break;
+        }
+        // Start tracking new version
+        currentVersion = line.replace(/^##\s+/, '').trim();
+        currentChangelog = '';
         continue;
       }
 
-      if (foundFirstEntry) {
+      if (currentVersion) {
         const bulletMatch = line.match(/^(\s*)[-*+]\s+(.+)$/);
         if (bulletMatch) {
           const [, indentation, bulletText] = bulletMatch;
@@ -172,13 +175,19 @@ async function checkAISDK(): Promise<string | null> {
             cleanText = commitHashMatch[1];
           }
 
-          // Skip noise but be more lenient for features
+          // Filter meaningful changes - be more lenient
           if (
+            cleanText &&
+            cleanText.length > 8 &&
             !cleanText.toLowerCase().includes('thanks @') &&
             !cleanText.startsWith('Updated dependencies') &&
             !cleanText.startsWith('@') &&
-            cleanText.length > 10 &&
-            (cleanText.includes('feat') ||
+            !cleanText.match(/^[a-f0-9]{7,}/) &&
+            cleanText !== '-'
+          ) {
+            // Look for meaningful content or just take first few items if nothing specific found
+            const isMeaningful =
+              cleanText.includes('feat') ||
               cleanText.includes('fix') ||
               cleanText.includes('add') ||
               cleanText.includes('improve') ||
@@ -187,20 +196,31 @@ async function checkAISDK(): Promise<string | null> {
               cleanText.includes('when') ||
               cleanText.includes('error') ||
               cleanText.includes('callback') ||
-              cleanText.includes('sent'))
-          ) {
-            cleanText = cleanText
-              .replace(/^(feat|fix|chore)\s*(\([^)]+\))?\s*:\s*/i, '')
-              .replace(/^-\s*/, '')
-              .trim();
+              cleanText.includes('sent') ||
+              cleanText.includes('remove') ||
+              cleanText.includes('update') ||
+              cleanText.includes('change');
 
-            if (cleanText.length > 8) {
-              const prefix = indentation.length > 0 ? '  • ' : '• ';
-              changelog += `${prefix}${cleanText}\n`;
+            if (isMeaningful || changelog.split('\n').length < 4) {
+              cleanText = cleanText
+                .replace(/^(feat|fix|chore)\s*(\([^)]+\))?\s*:\s*/i, '')
+                .replace(/^-\s*/, '')
+                .trim();
+
+              if (cleanText.length > 8) {
+                const prefix = indentation.length > 0 ? '  • ' : '• ';
+                currentChangelog += `${prefix}${cleanText}\n`;
+              }
             }
           }
         }
       }
+    }
+
+    // If no version with changes was found during iteration, use the last one we processed
+    if (!foundVersionWithChanges && currentChangelog.trim()) {
+      version = currentVersion;
+      changelog = currentChangelog;
     }
 
     if (!version) return null;
@@ -374,48 +394,47 @@ async function checkAIElements(): Promise<string | null> {
   return null;
 }
 
-async function checkGitHubRepo(
-  repo: string,
-  fileKey: keyof typeof FILES,
-  name: string
-): Promise<string | null> {
-  const url = `https://api.github.com/repos/${repo}/releases/latest`;
+async function checkWagmiChangelog(): Promise<string | null> {
+  const url =
+    'https://raw.githubusercontent.com/wevm/wagmi/refs/heads/main/packages/core/CHANGELOG.md';
   try {
-    const { data }: { data: GitHubRelease } = await axios.get(url, {
-      headers: { Accept: 'application/vnd.github.v3+json' },
-    });
-    const latestTag = data.tag_name;
-    const lastTag = await getLastValue(FILES[fileKey]);
+    const { data } = await axios.get(url);
+    const lines = data.split('\n');
+    let version = '';
+    let changelog = '';
+    let foundFirstEntry = false;
 
-    if (latestTag !== lastTag) {
-      const lines = data.body.split('\n');
-      let changelog = '';
+    for (const line of lines) {
+      if (line.match(/^##\s+\d+\.\d+\.\d+/)) {
+        if (foundFirstEntry) break;
+        version = line.replace(/^##\s+/, '').trim();
+        foundFirstEntry = true;
+        continue;
+      }
 
-      for (const line of lines) {
+      if (foundFirstEntry) {
         const bulletMatch = line.match(/^(\s*)[-*+]\s+(.+)$/);
-        const numberedMatch = line.match(/^(\s*)\d+\.\s+(.+)$/);
+        if (bulletMatch) {
+          const [, indentation, bulletText] = bulletMatch;
+          let cleanText = bulletText.trim();
 
-        const match = bulletMatch || numberedMatch;
-        if (match) {
-          const [, indentation, bulletContent] = match;
-          if (!bulletContent) continue;
-          let cleanText = bulletContent.trim();
-
-          // Remove markdown links and commit hashes
+          // Remove commit hashes, pull request links, and thanks messages
           cleanText = cleanText
-            .replace(/\[`[a-f0-9]+`\]\([^)]+\)/g, '')
-            .replace(/Thanks \[@\w+\]\([^)]+\)!\s*-\s*/, '')
+            .replace(/\[#\d+\]\([^)]+\)/g, '') // Remove PR links
+            .replace(/\[`[a-f0-9]+`\]\([^)]+\)/g, '') // Remove commit hash links
+            .replace(/Thanks \[@\w+\]\([^)]+\)!\s*-\s*/g, '') // Remove thanks messages
+            .replace(/\[\`[a-f0-9]{7,}\`\]/g, '') // Remove commit hashes in backticks
             .replace(/\s+/g, ' ')
-            .replace(/^-\s*/, '')
             .trim();
 
+          // Filter meaningful changes
           if (
             cleanText &&
             cleanText.length > 8 &&
+            !cleanText.toLowerCase().includes('thanks @') &&
             !cleanText.startsWith('Updated dependencies') &&
-            !cleanText.toLowerCase().includes('updated dependencies') &&
             !cleanText.startsWith('@') &&
-            !cleanText.match(/[a-f0-9]{7,}/) &&
+            !cleanText.match(/^[a-f0-9]{7,}/) &&
             !cleanText.includes('core@') &&
             !cleanText.includes('connectors@') &&
             cleanText !== '-' &&
@@ -428,24 +447,103 @@ async function checkGitHubRepo(
           }
         }
       }
+    }
 
-      if (!changelog.trim()) {
-        const cleanLines = lines
-          .filter((line) => line.trim() && !line.match(/^#{1,6}\s/))
-          .slice(0, 3);
-        changelog = cleanLines.map((line) => `• ${line.trim()}`).join('\n');
-      }
+    if (!version) return null;
 
+    const contentHash = crypto
+      .createHash('sha256')
+      .update(version + changelog)
+      .digest('hex');
+    const lastHash = await getLastValue(FILES.wagmi);
+
+    if (contentHash !== lastHash) {
       const summary = generateMessage({
-        toolName: name,
+        toolName: 'wagmi',
         changelog: changelog.trim(),
-        link: `https://github.com/${repo}/releases/tag/${latestTag}`,
+        link: 'https://github.com/wevm/wagmi/blob/main/packages/core/CHANGELOG.md',
       });
-      await saveValue(FILES[fileKey], latestTag);
+      await saveValue(FILES.wagmi, contentHash);
       return summary;
     }
   } catch (error) {
-    console.error(`${name} check error:`, (error as Error).message);
+    console.error('Wagmi check error:', (error as Error).message);
+  }
+  return null;
+}
+
+async function checkViemChangelog(): Promise<string | null> {
+  const url =
+    'https://raw.githubusercontent.com/wevm/viem/refs/heads/main/src/CHANGELOG.md';
+  try {
+    const { data } = await axios.get(url);
+    const lines = data.split('\n');
+    let version = '';
+    let changelog = '';
+    let foundFirstEntry = false;
+
+    for (const line of lines) {
+      if (line.match(/^##\s+\d+\.\d+\.\d+/)) {
+        if (foundFirstEntry) break;
+        version = line.replace(/^##\s+/, '').trim();
+        foundFirstEntry = true;
+        continue;
+      }
+
+      if (foundFirstEntry) {
+        const bulletMatch = line.match(/^(\s*)[-*+]\s+(.+)$/);
+        if (bulletMatch) {
+          const [, indentation, bulletText] = bulletMatch;
+          let cleanText = bulletText.trim();
+
+          // Remove commit hashes, pull request links, and thanks messages
+          cleanText = cleanText
+            .replace(/\[#\d+\]\([^)]+\)/g, '') // Remove PR links
+            .replace(/\[`[a-f0-9]+`\]\([^)]+\)/g, '') // Remove commit hash links
+            .replace(/Thanks \[@\w+\]\([^)]+\)!\s*-\s*/g, '') // Remove thanks messages
+            .replace(/\[\`[a-f0-9]{7,}\`\]/g, '') // Remove commit hashes in backticks
+            .replace(/\s+/g, ' ')
+            .trim();
+
+          // Filter meaningful changes
+          if (
+            cleanText &&
+            cleanText.length > 8 &&
+            !cleanText.toLowerCase().includes('thanks @') &&
+            !cleanText.startsWith('Updated dependencies') &&
+            !cleanText.startsWith('@') &&
+            !cleanText.match(/^[a-f0-9]{7,}/) &&
+            cleanText !== '-' &&
+            !cleanText.match(/^#{1,6}\s/) &&
+            !cleanText.match(/^\[.*\]:$/)
+          ) {
+            const prefix =
+              indentation && indentation.length > 2 ? '  • ' : '• ';
+            changelog += `${prefix}${cleanText}\n`;
+          }
+        }
+      }
+    }
+
+    if (!version) return null;
+
+    const contentHash = crypto
+      .createHash('sha256')
+      .update(version + changelog)
+      .digest('hex');
+    const lastHash = await getLastValue(FILES.viem);
+
+    if (contentHash !== lastHash) {
+      const summary = generateMessage({
+        toolName: 'viem',
+        changelog: changelog.trim(),
+        link: 'https://github.com/wevm/viem/blob/main/src/CHANGELOG.md',
+      });
+      await saveValue(FILES.viem, contentHash);
+      return summary;
+    }
+  } catch (error) {
+    console.error('Viem check error:', (error as Error).message);
   }
   return null;
 }
@@ -465,8 +563,8 @@ async function checkGitHubRepo(
     checkV0(),
     checkAIElements(),
     checkAISDK(),
-    checkGitHubRepo('wevm/wagmi', 'wagmi', 'wagmi'),
-    checkGitHubRepo('wevm/viem', 'viem', 'viem'),
+    checkWagmiChangelog(),
+    checkViemChangelog(),
   ]);
 
   if (claudeUpdate) await sendTelegramMessage(claudeUpdate);
