@@ -9,7 +9,7 @@ export function generateMessage({
   changelog,
   link,
 }: Message): string {
-  return `${toolName} release
+  return `**${toolName} release**
 
 ${changelog.toLowerCase()}
 
