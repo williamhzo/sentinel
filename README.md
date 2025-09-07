@@ -1,6 +1,8 @@
 # Sentinel
 
-Monitors changelogs and sends Telegram notifications on updates for the following tools:
+Monitors changelogs and sends Telegram notifications on updates.
+
+Can be used for any tool or library, currently set up for the following:
 
 - Claude Code
 - Vercel AI SDK
