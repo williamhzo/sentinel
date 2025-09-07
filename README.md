@@ -12,10 +12,32 @@ Monitors changelogs and sends Telegram notifications on updates for the followin
 
 ## Setup
 
+### 1. Install Dependencies
+
 ```bash
 bun install
-export TELEGRAM_TOKEN="your_bot_token"
-export CHAT_ID="your_chat_id"
+```
+
+### 2. Create Telegram Bot
+
+1. Message [@BotFather](https://t.me/botfather) on Telegram
+2. Send `/newbot` and follow prompts
+3. Save the bot token from the response
+
+### 3. Get Chat ID
+
+1. Start a chat with your bot
+2. Send any message to your bot
+3. Visit: `https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates`
+4. Find `"chat":{"id":` in the response
+
+### 4. Set Environment Variables
+
+**In `.env`:**
+
+```bash
+TELEGRAM_TOKEN=your_bot_token
+CHAT_ID=your_chat_id
 ```
 
 ## Usage
