@@ -157,12 +157,12 @@ function parseStandardChangelog(lines: string[], versionPattern: RegExp) {
 
     if (foundFirstEntry) {
       const bulletMatch = line.match(/^(\s*)[-*+]\s+(.+)$/);
-      if (bulletMatch) {
-        const [, indentation, bulletText] = bulletMatch;
+      if (bulletMatch && bulletMatch[2]) {
+        const [, indentation = '', bulletText] = bulletMatch;
         const cleanText = cleanChangelogText(bulletText);
 
         if (isValidChangelogEntry(cleanText)) {
-          const prefix = indentation && indentation.length > 2 ? '  • ' : '• ';
+          const prefix = indentation.length > 2 ? '  • ' : '• ';
           changelog += `${prefix}${cleanText}\n`;
         }
       }
@@ -194,12 +194,12 @@ function parseComplexChangelog(lines: string[], versionPattern: RegExp) {
 
     if (currentVersion) {
       const bulletMatch = line.match(/^(\s*)[-*+]\s+(.+)$/);
-      if (bulletMatch) {
-        const [, indentation, bulletText] = bulletMatch;
+      if (bulletMatch && bulletMatch[2]) {
+        const [, indentation = '', bulletText] = bulletMatch;
         let cleanText = bulletText.trim();
 
         const commitHashMatch = cleanText.match(/^[a-f0-9]{7,}:\s*(.+)$/);
-        if (commitHashMatch) {
+        if (commitHashMatch && commitHashMatch[1]) {
           cleanText = commitHashMatch[1];
         }
 
