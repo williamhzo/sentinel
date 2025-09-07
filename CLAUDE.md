@@ -1,111 +1,126 @@
 ---
-description: Use Bun instead of Node.js, npm, pnpm, or vite.
-globs: "*.ts, *.tsx, *.html, *.css, *.js, *.jsx, package.json"
-alwaysApply: false
+description: Sentinel is a changelog monitoring service built with Bun and deployed to Cloudflare Workers. It monitors various developer tools and sends Telegram notifications when updates are available.
+globs: "*.ts, *.tsx, *.html, *.css, *.js, *.jsx, package.json, wrangler.toml"
+alwaysApply: true
 ---
 
-Default to using Bun instead of Node.js.
+# Sentinel - Changelog Monitor
 
-- Use `bun <file>` instead of `node <file>` or `ts-node <file>`
-- Use `bun test` instead of `jest` or `vitest`
-- Use `bun build <file.html|file.ts|file.css>` instead of `webpack` or `esbuild`
-- Use `bun install` instead of `npm install` or `yarn install` or `pnpm install`
-- Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or `pnpm run <script>`
-- Bun automatically loads .env, so don't use dotenv.
+Sentinel is a TypeScript application that monitors changelogs from various developer tools and services, sending notifications via Telegram when new releases are detected. It can run both locally with Bun and as a Cloudflare Worker with scheduled execution.
 
-## APIs
+## Architecture
 
-- `Bun.serve()` supports WebSockets, HTTPS, and routes. Don't use `express`.
-- `bun:sqlite` for SQLite. Don't use `better-sqlite3`.
-- `Bun.redis` for Redis. Don't use `ioredis`.
-- `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
-- `WebSocket` is built-in. Don't use `ws`.
-- Prefer `Bun.file` over `node:fs`'s readFile/writeFile
-- Bun.$`ls` instead of execa.
+The project consists of several key components:
 
-## Testing
+### Core Files
+- `sentinel.ts` - Main entry point with dual environment support (Bun local/Cloudflare Worker)
+- `utils.ts` - Shared utilities for storage, environment, and Telegram messaging
+- `changelog-checks.ts` - Individual changelog parsers for each monitored tool
+- `changelog.test.ts` - Comprehensive test suite using Bun's built-in test runner
 
-Use `bun test` to run tests.
+### Monitored Tools
+Currently monitors changelogs for:
+- **Claude Code** - Anthropic's CLI tool
+- **AI SDK** - Vercel's AI development kit
+- **Cursor** - AI-powered code editor
+- **v0** - Vercel's AI-powered UI generator
+- **AI Elements** - Vercel's AI component library
+- **Wagmi** - React hooks for Ethereum
+- **Viem** - TypeScript Ethereum library
 
-```ts#index.test.ts
-import { test, expect } from "bun:test";
+## Development Setup
 
-test("hello world", () => {
-  expect(1).toBe(1);
-});
+### Prerequisites
+- Bun runtime
+- Telegram bot token and chat ID
+- Cloudflare account (for deployment)
+
+### Environment Variables
+Copy `.env.example` to `.env` and fill in:
+```env
+TELEGRAM_TOKEN=your_bot_token
+TELEGRAM_CHAT_ID=your_chat_id
 ```
 
-## Frontend
+### Available Scripts
+- `bun run dev` - Start Wrangler development server
+- `bun run deploy` - Deploy to Cloudflare Workers
+- `bun run bun-run` - Run locally with Bun
+- `bun test` - Run test suite
 
-Use HTML imports with `Bun.serve()`. Don't use `vite`. HTML imports fully support React, CSS, Tailwind.
+## Usage Patterns
 
-Server:
+### Local Development
+```ts
+// Run locally for testing
+bun run sentinel.ts
 
-```ts#index.ts
-import index from "./index.html"
-
-Bun.serve({
-  routes: {
-    "/": index,
-    "/api/users/:id": {
-      GET: (req) => {
-        return new Response(JSON.stringify({ id: req.params.id }));
-      },
-    },
-  },
-  // optional websocket support
-  websocket: {
-    open: (ws) => {
-      ws.send("Hello, world!");
-    },
-    message: (ws, message) => {
-      ws.send(message);
-    },
-    close: (ws) => {
-      // handle close
-    }
-  },
-  development: {
-    hmr: true,
-    console: true,
-  }
-})
+// Run with hot reload for development
+bun --hot sentinel.ts
 ```
 
-HTML files can import .tsx, .jsx or .js files directly and Bun's bundler will transpile & bundle automatically. `<link>` tags can point to stylesheets and Bun's CSS bundler will bundle.
+### Cloudflare Worker Deployment
+The application automatically detects the execution environment and adapts accordingly:
+- **Local**: Uses filesystem-based storage in `./cache/` directory
+- **Worker**: Uses Cloudflare KV for persistent storage
 
-```html#index.html
-<html>
-  <body>
-    <h1>Hello, world!</h1>
-    <script type="module" src="./frontend.tsx"></script>
-  </body>
-</html>
+### Testing
+Uses Bun's native testing framework:
+```ts
+import { describe, it, expect } from 'bun:test';
+// Test implementation
 ```
 
-With the following `frontend.tsx`:
+## Technical Details
 
-```tsx#frontend.tsx
-import React from "react";
+### Dual Environment Support
+- Detects execution context using `globalThis.ScheduledEvent`
+- Provides environment-specific storage and configuration
+- Supports both filesystem (local) and KV (worker) storage backends
 
-// import .css files directly and it works
-import './index.css';
+### Changelog Parsing Strategies
+- **Markdown parsing** for GitHub-hosted changelogs
+- **HTML scraping** for web-based changelogs (Cursor, Vercel)
+- **Content hashing** for change detection
+- **Configurable filtering** to extract meaningful updates
 
-import { createRoot } from "react-dom/client";
+### Telegram Integration
+- Markdown-formatted messages
+- Error handling for failed deliveries
+- Consistent message formatting across all tools
 
-const root = createRoot(document.body);
+### Scheduled Execution
+- Runs every 10 minutes via Cloudflare Workers cron trigger
+- Configurable in `wrangler.toml`
 
-export default function Frontend() {
-  return <h1>Hello, world!</h1>;
-}
+## Configuration
 
-root.render(<Frontend />);
+### Wrangler Configuration
+```toml
+name = "sentinel"
+main = "sentinel.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+[triggers]
+crons = ["*/10 * * * *"]  # Every 10 minutes
 ```
 
-Then, run index.ts
+### TypeScript Configuration
+- Latest ESNext features
+- Bundler module resolution
+- Cloudflare Workers and Bun type support
+- Strict type checking enabled
 
-```sh
-bun --hot ./index.ts
-```
+## Deployment
 
-For more information, read the Bun API docs in `node_modules/bun-types/docs/**.md`.
+1. Ensure Wrangler is configured with your Cloudflare account
+2. Set up KV namespace in Cloudflare dashboard
+3. Configure secrets: `wrangler secret put TELEGRAM_TOKEN` and `wrangler secret put CHAT_ID`
+4. Deploy: `bun run deploy`
+
+## Bun-Specific Features
+- Native .env loading (no dotenv required)
+- Built-in testing framework
+- Fast TypeScript execution
+- Efficient HTTP client
