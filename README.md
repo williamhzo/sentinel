@@ -1,4 +1,4 @@
-# Sentinel: get notified when your favorite tools get updated
+# Sentinel
 
 ## Monitors changelogs and sends Telegram notifications on updates
 
