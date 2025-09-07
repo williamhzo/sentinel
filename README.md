@@ -1,6 +1,4 @@
-# Sentinel
-
-## Monitors changelogs and sends Telegram notifications on updates
+# Sentinel: receive tool updates in Telegram
 
 Can be used for any tool or library, currently set up for the following:
 
