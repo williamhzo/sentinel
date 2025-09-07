@@ -140,5 +140,41 @@ https://example.com/changelog`;
 
       expect(result).toBe(expected);
     });
+
+    it('should clean "thanks @user" with GitHub links', () => {
+      const result = generateMessage({
+        toolName: 'test tool',
+        changelog:
+          '• thanks @yutaro-mori-eng (https://github.com/yutaro-mori-eng)! - added tea sepolia\n• Thanks @user (https://github.com/user) - Fixed bug',
+        link: 'https://example.com/changelog',
+      });
+
+      const expected = `*test tool release*
+
+• added tea sepolia
+• fixed bug
+
+https://example.com/changelog`;
+
+      expect(result).toBe(expected);
+    });
+
+    it('should clean markdown thanks patterns with hyphens in usernames', () => {
+      const result = generateMessage({
+        toolName: 'test tool',
+        changelog:
+          '• Thanks [@Yutaro-Mori-eng](https://github.com/Yutaro-Mori-eng)! - Added Tea Sepolia\n• Thanks [@user-name](https://github.com/user-name) - Fixed bug',
+        link: 'https://example.com/changelog',
+      });
+
+      const expected = `*test tool release*
+
+• added tea sepolia
+• fixed bug
+
+https://example.com/changelog`;
+
+      expect(result).toBe(expected);
+    });
   });
 });

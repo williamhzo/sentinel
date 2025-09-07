@@ -26,7 +26,8 @@ type Message = {
 
 function cleanMessageText(text: string): string {
   return text
-    .replace(/thanks @[\w-]+!?\s*-\s*/gi, '')
+    .replace(/Thanks \[@[\w-]+\]\([^)]+\)!?\s*-\s*/g, '')
+    .replace(/thanks @[\w-]+(\s*\([^)]+\))?\s*!?\s*-\s*/gi, '')
     .replace(/\.\s*$/gm, '')
     .replace(/\.$/, '')
     .trim();

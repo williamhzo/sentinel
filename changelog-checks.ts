@@ -41,8 +41,8 @@ function cleanChangelogText(text: string): string {
   return text
     .replace(/\[#\d+\]\([^)]+\)/g, '')
     .replace(/\[`[a-f0-9]+`\]\([^)]+\)/g, '')
-    .replace(/Thanks \[@\w+\]\([^)]+\)!\s*-\s*/g, '')
-    .replace(/thanks @[\w-]+!?\s*-\s*/gi, '')
+    .replace(/Thanks \[@[\w-]+\]\([^)]+\)!?\s*-\s*/g, '')
+    .replace(/thanks @[\w-]+(\s*\([^)]+\))?\s*!?\s*-\s*/gi, '')
     .replace(/\[\`[a-f0-9]{7,}\`\]/g, '')
     .replace(/^(feat|fix|chore)\s*(\([^)]+\))?\s*:\s*/i, '')
     .replace(/^-\s*/, '')

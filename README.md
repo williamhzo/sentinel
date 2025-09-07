@@ -1,4 +1,6 @@
-# Sentinel: receive tool updates in Telegram
+# Sentinel
+
+Monitor changelogs for your favouritte tools & libraries, and get notified in Telegram.
 
 Can be used for any tool or library, currently set up for the following:
 
