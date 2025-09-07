@@ -64,8 +64,8 @@ To monitor a new tool's changelog:
 
    ```typescript
    NEWTOOL: {
-     url: 'https://raw.githubusercontent.com/org/repo/main/CHANGELOG.md',
-     link: 'https://github.com/org/repo/blob/main/CHANGELOG.md',
+     url: 'path_to_raw_markdown_or_deployed_changelog',
+     link: 'path_to_changelog',
      name: 'tool name',
    }
    ```
