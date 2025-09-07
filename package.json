@@ -1,12 +1,12 @@
 {
   "name": "sentinel",
-  "module": "index.ts",
+  "module": "sentinel.ts",
   "type": "module",
   "private": true,
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "bun-run": "bun run index.ts"
+    "bun-run": "bun run sentinel.ts"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.0.0",

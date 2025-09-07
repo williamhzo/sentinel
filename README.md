@@ -1,50 +1,39 @@
 # Sentinel
 
-A changelog monitoring tool that tracks updates from various development tools and sends notifications via Telegram.
+Monitors changelogs and sends Telegram notifications on updates for the following tools:
 
-## Features
-
-- Monitors changelogs for:
-
-  - Claude Code
-  - Vercel AI SDK
-  - Cursor IDE
-  - v0
-  - Vercel AI Elements
-  - wagmi (core & React)
-  - viem
-
-- Parses raw markdown changelogs for consistent output
-- Filters out noise (commit hashes, dependency updates, etc.)
-- Sends formatted notifications to Telegram
+- Claude Code
+- Vercel AI SDK
+- Cursor IDE
+- v0
+- AI Elements
+- wagmi
+- viem
 
 ## Setup
 
-1. Install dependencies:
+```bash
+bun install
+export TELEGRAM_TOKEN="your_bot_token"
+export CHAT_ID="your_chat_id"
+```
 
-   ```bash
-   bun install
-   ```
+## Usage
 
-2. Set environment variables:
+**Local/Development:**
 
-   ```bash
-   export TELEGRAM_TOKEN="your_telegram_bot_token"
-   export CHAT_ID="your_telegram_chat_id"
-   ```
+```bash
+bun run sentinel.ts
+```
 
-3. Run the monitoring script:
-   ```bash
-   bun run index.ts
-   ```
+**Cloudflare Worker:**
+
+```bash
+wrangler deploy
+```
 
 ## Testing
 
 ```bash
 bun test
 ```
-
-The tests verify:
-
-- Changelog parsing for each tool
-- Message formatting consistency
