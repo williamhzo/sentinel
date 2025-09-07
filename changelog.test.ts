@@ -105,5 +105,40 @@ https://example.com/changelog`;
 
       expect(result).toBe(expected);
     });
+
+    it('should remove trailing periods from bullet points', () => {
+      const result = generateMessage({
+        toolName: 'test tool',
+        changelog: '• Fixed bug.\n• Added feature.',
+        link: 'https://example.com/changelog',
+      });
+
+      const expected = `*test tool release*
+
+• fixed bug
+• added feature
+
+https://example.com/changelog`;
+
+      expect(result).toBe(expected);
+    });
+
+    it('should clean "thanks @user" patterns consistently', () => {
+      const result = generateMessage({
+        toolName: 'test tool',
+        changelog:
+          '• thanks @user! - Added feature\n• Thanks @another-user - Fixed bug',
+        link: 'https://example.com/changelog',
+      });
+
+      const expected = `*test tool release*
+
+• added feature
+• fixed bug
+
+https://example.com/changelog`;
+
+      expect(result).toBe(expected);
+    });
   });
 });

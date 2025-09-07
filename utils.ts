@@ -24,14 +24,28 @@ type Message = {
   link: string;
 };
 
+function cleanMessageText(text: string): string {
+  return text
+    .replace(/thanks @[\w-]+!?\s*-\s*/gi, '')
+    .replace(/\.\s*$/gm, '')
+    .replace(/\.$/, '')
+    .trim();
+}
+
 export function generateMessage({
   toolName,
   changelog,
   link,
 }: Message): string {
+  const cleanedChangelog = changelog
+    .split('\n')
+    .map((line) => cleanMessageText(line))
+    .join('\n')
+    .toLowerCase();
+
   return `*${toolName} release*
 
-${changelog.toLowerCase()}
+${cleanedChangelog}
 
 ${link}`;
 }

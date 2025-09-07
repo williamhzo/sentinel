@@ -42,9 +42,11 @@ function cleanChangelogText(text: string): string {
     .replace(/\[#\d+\]\([^)]+\)/g, '')
     .replace(/\[`[a-f0-9]+`\]\([^)]+\)/g, '')
     .replace(/Thanks \[@\w+\]\([^)]+\)!\s*-\s*/g, '')
+    .replace(/thanks @[\w-]+!?\s*-\s*/gi, '')
     .replace(/\[\`[a-f0-9]{7,}\`\]/g, '')
     .replace(/^(feat|fix|chore)\s*(\([^)]+\))?\s*:\s*/i, '')
     .replace(/^-\s*/, '')
+    .replace(/\.\s*$/, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
