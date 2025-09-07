@@ -2,7 +2,7 @@
 
 Monitor changelogs for your favouritte tools & libraries, and get notified in Telegram.
 
-| <img src="assets/readme_1.png" width="400" /> | <img src="assets/readme_2.png" width="400" /> |
+<img src="assets/readme_1.png" width="48%" /> <img src="assets/readme_2.png" width="48%" />
 
 Can be used for any tool or library, currently set up for the following:
 
