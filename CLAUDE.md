@@ -1,3 +1,7 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 ---
 description: Sentinel is a changelog monitoring service built with Bun and deployed to Cloudflare Workers. It monitors various developer tools and sends Telegram notifications when updates are available.
 globs: "*.ts, *.tsx, *.html, *.css, *.js, *.jsx, package.json, wrangler.toml"
@@ -36,17 +40,23 @@ Currently monitors changelogs for:
 - Cloudflare account (for deployment)
 
 ### Environment Variables
-Copy `.env.example` to `.env` and fill in:
+Create a `.env` file with:
 ```env
 TELEGRAM_TOKEN=your_bot_token
-TELEGRAM_CHAT_ID=your_chat_id
+CHAT_ID=your_chat_id
 ```
+
+To get these values:
+1. Create a Telegram bot via [@BotFather](https://t.me/botfather) with `/newbot` command
+2. Get your chat ID by visiting: `https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates` after messaging your bot
 
 ### Available Scripts
 - `bun run dev` - Start Wrangler development server
 - `bun run deploy` - Deploy to Cloudflare Workers
 - `bun run bun-run` - Run locally with Bun
-- `bun test` - Run test suite
+- `bun run sentinel.ts` - Direct execution (same as bun-run)
+- `bun test` - Run all tests
+- `bun test <file>` - Run specific test file
 
 ## Usage Patterns
 
@@ -90,8 +100,31 @@ import { describe, it, expect } from 'bun:test';
 - Consistent message formatting across all tools
 
 ### Scheduled Execution
-- Runs every 10 minutes via Cloudflare Workers cron trigger
-- Configurable in `wrangler.toml`
+- Can run via Cloudflare Workers cron trigger (currently paused)
+- Configure schedule in `wrangler.toml` under `[triggers]` section
+- Also requires KV namespace binding to be uncommented
+
+## Adding New Monitored Tools
+
+To add a new changelog to monitor:
+
+1. **Add configuration** in `changelog-checks.ts`:
+   ```typescript
+   NEWTOOL: {
+     url: 'path_to_raw_markdown_or_changelog_url',
+     link: 'path_to_changelog_page',
+     name: 'tool name',
+   }
+   ```
+
+2. **Create checker function**:
+   - For markdown changelogs: Use `createChangelogChecker` helper
+   - For HTML changelogs: Write custom parser using cheerio (see `checkCursor` or `checkV0`)
+
+3. **Add to execution** in `sentinel.ts`:
+   - Import new checker function
+   - Add to `Promise.all()` in `runChecks()` function
+   - Add corresponding `if (update) await sendTelegramMessage()` call
 
 ## Configuration
 
@@ -102,8 +135,14 @@ main = "sentinel.ts"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
-[triggers]
-crons = ["*/10 * * * *"]  # Every 10 minutes
+# Uncomment to enable scheduled execution
+# [triggers]
+# crons = ["*/10 * * * *"]
+
+# Uncomment and configure for Worker storage
+# [[kv_namespaces]]
+# binding = "SENTINEL_KV"
+# id = "your_kv_namespace_id"
 ```
 
 ### TypeScript Configuration
@@ -112,12 +151,16 @@ crons = ["*/10 * * * *"]  # Every 10 minutes
 - Cloudflare Workers and Bun type support
 - Strict type checking enabled
 
-## Deployment
+## Deployment to Cloudflare Workers
 
-1. Ensure Wrangler is configured with your Cloudflare account
-2. Set up KV namespace in Cloudflare dashboard
-3. Configure secrets: `wrangler secret put TELEGRAM_TOKEN` and `wrangler secret put CHAT_ID`
-4. Deploy: `bun run deploy`
+1. Ensure Wrangler is authenticated: `wrangler login`
+2. Create KV namespace: `wrangler kv:namespace create "SENTINEL_KV"`
+3. Update `wrangler.toml` with KV namespace ID and uncomment the binding
+4. Set secrets:
+   - `wrangler secret put TELEGRAM_TOKEN`
+   - `wrangler secret put CHAT_ID`
+5. Uncomment cron trigger in `wrangler.toml` if desired
+6. Deploy: `bun run deploy`
 
 ## Bun-Specific Features
 - Native .env loading (no dotenv required)
