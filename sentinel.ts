@@ -40,13 +40,14 @@ async function runChecks(storage: any, env: any): Promise<void> {
     checkViemChangelog(storage),
   ]);
 
-  if (claudeUpdate) await sendTelegramMessage(claudeUpdate, env);
-  if (cursorUpdate) await sendTelegramMessage(cursorUpdate, env);
-  if (v0Update) await sendTelegramMessage(v0Update, env);
-  if (elementsUpdate) await sendTelegramMessage(elementsUpdate, env);
-  if (aiSdkUpdate) await sendTelegramMessage(aiSdkUpdate, env);
-  if (wagmiUpdate) await sendTelegramMessage(wagmiUpdate, env);
-  if (viemUpdate) await sendTelegramMessage(viemUpdate, env);
+  // PAUSED: Telegram notifications disabled. Uncomment to resume.
+  // if (claudeUpdate) await sendTelegramMessage(claudeUpdate, env);
+  // if (cursorUpdate) await sendTelegramMessage(cursorUpdate, env);
+  // if (v0Update) await sendTelegramMessage(v0Update, env);
+  // if (elementsUpdate) await sendTelegramMessage(elementsUpdate, env);
+  // if (aiSdkUpdate) await sendTelegramMessage(aiSdkUpdate, env);
+  // if (wagmiUpdate) await sendTelegramMessage(wagmiUpdate, env);
+  // if (viemUpdate) await sendTelegramMessage(viemUpdate, env);
 }
 
 function isWorkerEnvironment(): boolean {
