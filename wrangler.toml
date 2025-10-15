@@ -3,18 +3,18 @@ main = "sentinel.ts"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
-# [triggers]
-# crons = ["*/10 * * * *"]  # Every 10 minutes - PAUSED
+[triggers]
+crons = ["*/10 * * * *"]  # Every 10 minutes - PAUSED
 
-# [[kv_namespaces]]
-# binding = "SENTINEL_KV"
-# id = "5898869a24434a1985267998fa95b596"
+[[kv_namespaces]]
+binding = "SENTINEL_KV"
+id = "5898869a24434a1985267998fa95b596"
 
 [vars]
-# Environment variables (non-sensitive)
+Environment variables (non-sensitive)
 
 [env.production.vars]
-# Production environment variables
+Production environment variables
 
 [env.development.vars]
-# Development environment variables
+Development environment variables
