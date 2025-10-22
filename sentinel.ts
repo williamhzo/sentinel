@@ -22,25 +22,24 @@ interface WorkerEnv {
 }
 
 async function runChecks(storage: any, env: any): Promise<void> {
-  const [
-    claudeUpdate,
-    cursorUpdate,
-    v0Update,
-    elementsUpdate,
-    aiSdkUpdate,
-    wagmiUpdate,
-    viemUpdate,
-  ] = await Promise.all([
-    checkClaudeCode(storage),
-    checkCursor(storage),
-    checkV0(storage),
-    checkAIElements(storage),
-    checkAISDK(storage),
-    checkWagmiChangelog(storage),
-    checkViemChangelog(storage),
-  ]);
-
   // PAUSED: Telegram notifications disabled. Uncomment to resume.
+  // const [
+  //   claudeUpdate,
+  //   cursorUpdate,
+  //   v0Update,
+  //   elementsUpdate,
+  //   aiSdkUpdate,
+  //   wagmiUpdate,
+  //   viemUpdate,
+  // ] = await Promise.all([
+  //   checkClaudeCode(storage),
+  //   checkCursor(storage),
+  //   checkV0(storage),
+  //   checkAIElements(storage),
+  //   checkAISDK(storage),
+  //   checkWagmiChangelog(storage),
+  //   checkViemChangelog(storage),
+  // ]);
   // if (claudeUpdate) await sendTelegramMessage(claudeUpdate, env);
   // if (cursorUpdate) await sendTelegramMessage(cursorUpdate, env);
   // if (v0Update) await sendTelegramMessage(v0Update, env);
