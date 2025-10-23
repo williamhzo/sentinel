@@ -176,14 +176,33 @@ compatibility_flags = ["nodejs_compat"]
 
 ## Deployment to Cloudflare Workers
 
-1. Ensure Wrangler is authenticated: `wrangler login`
-2. Create KV namespace: `wrangler kv:namespace create "SENTINEL_KV"`
-3. Update `wrangler.toml` with KV namespace ID and uncomment the binding
+**Note:** This repository comes with notifications and cron triggers **commented out by default**. This "paused" state allows you to set up and test without immediately starting scheduled checks or notifications.
+
+### Initial Setup
+
+1. Ensure Wrangler is authenticated: `npx wrangler login`
+2. Create KV namespace: `npx wrangler kv:namespace create "SENTINEL_KV"`
+3. Update `wrangler.toml` with your KV namespace ID and uncomment the binding
 4. Set secrets:
-   - `wrangler secret put TELEGRAM_TOKEN`
-   - `wrangler secret put CHAT_ID`
-5. Uncomment cron trigger in `wrangler.toml` if desired
-6. Deploy: `bun run deploy`
+   - `npx wrangler secret put TELEGRAM_TOKEN`
+   - `npx wrangler secret put CHAT_ID`
+5. Uncomment the notification code in `sentinel.ts:26-49` when ready to enable checks
+6. Uncomment cron trigger in `wrangler.toml:6-7` to enable scheduled execution
+7. Deploy: `bun run deploy`
+
+### Pausing/Resuming
+
+**To pause:**
+
+1. Comment out the cron trigger in `wrangler.toml`
+2. Comment out the KV namespace binding in `wrangler.toml` (optional)
+3. Redeploy: `bun run deploy` OR delete worker: `npx wrangler delete sentinel`
+
+**To resume:**
+
+1. Uncomment the cron trigger and KV namespace binding in `wrangler.toml`
+2. Uncomment the notification code in `sentinel.ts` if previously commented
+3. Redeploy: `bun run deploy`
 
 ## Bun-Specific Features
 
